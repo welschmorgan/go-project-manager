@@ -12,22 +12,12 @@ var (
 	// Used for flags.
 	cfgFile        string
 	workspacesRoot string
+	verbose        bool
 
 	rootCmd = &cobra.Command{
 		Use:   "grlm [commands]",
 		Short: "Release multiple projects in a single go",
 		Long:  `GRLM allows releasing multiple projects declared in a workspace`,
-	}
-
-	initCmd = &cobra.Command{
-		Use:   "init [sub]",
-		Short: "Initialize the current folder as a workspace",
-		Long: `Initialize the current folder and turns it into a workspace.
-This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
-`,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Writing workspace config file...")
-		},
 	}
 )
 
@@ -40,6 +30,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grlm.yaml)")
+	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "show additionnal log messages")
 	// rootCmd.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")
 	// rootCmd.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
 	// rootCmd.PersistentFlags().Bool("viper", true, "use Viper for configuration")
@@ -81,5 +72,7 @@ func initConfig() {
 		}
 		panic(fmt.Errorf("configuration error: %s", err))
 	}
-	fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if verbose {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
 }
