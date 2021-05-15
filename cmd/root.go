@@ -84,6 +84,11 @@ func initConfig() {
 	if verbose {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+	if _, err := os.Stat(workingDirectory); err != nil && os.IsNotExist(err) {
+		if err := os.MkdirAll(workingDirectory, 0755); err != nil {
+			fmt.Printf("error: %s\n", err.Error())
+		}
+	}
 	if err := os.Chdir(workingDirectory); err != nil {
 		panic(err.Error())
 	}
