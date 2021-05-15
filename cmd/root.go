@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -10,9 +11,10 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile        string
-	workspacesRoot string
-	verbose        bool
+	cfgFile          string
+	workspacesRoot   string
+	workingDirectory string
+	verbose          bool
 
 	rootCmd = &cobra.Command{
 		Use:   "grlm [commands]",
@@ -29,8 +31,15 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grlm.yaml)")
-	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "show additionnal log messages")
+	if cwd, err := os.Getwd(); err != nil {
+		panic(err.Error())
+	} else {
+		workingDirectory = cwd
+	}
+
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.grlm.yaml)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show additionnal log messages")
+	rootCmd.PersistentFlags().StringVarP(&workingDirectory, "change-directory", "C", workingDirectory, "change working directory")
 	// rootCmd.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")
 	// rootCmd.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
 	// rootCmd.PersistentFlags().Bool("viper", true, "use Viper for configuration")
@@ -74,5 +83,8 @@ func initConfig() {
 	}
 	if verbose {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+	if err := os.Chdir(workingDirectory); err != nil {
+		panic(err.Error())
 	}
 }

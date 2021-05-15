@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/manifoldco/promptui"
-	"github.com/welschmorgan/go-project-manager/config"
+	"github.com/welschmorgan/go-project-manager/models"
 )
 
 type Validator func(string) error
@@ -38,7 +38,7 @@ func Ask(label, defaultValue string, validators ...Validator) (string, error) {
 	return prompt.Run()
 }
 
-func AskPerson(label string, defaults *config.Person, validators ...ObjValidator) (*config.Person, error) {
+func AskPerson(label string, defaults *models.Person, validators ...ObjValidator) (*models.Person, error) {
 	defaultName, defaultEmail, defaultPhone := "", "", ""
 	if defaults != nil {
 		defaultName = defaults.Name
@@ -56,7 +56,7 @@ func AskPerson(label string, defaults *config.Person, validators ...ObjValidator
 		}
 		return ret
 	}
-	var ret *config.Person = nil
+	var ret *models.Person = nil
 	if name, err := Ask(label+".name", defaultName, validator("name")...); err != nil {
 		return nil, err
 	} else if email, err := Ask(label+".email", defaultEmail, validator("email")...); err != nil {
@@ -64,7 +64,7 @@ func AskPerson(label string, defaults *config.Person, validators ...ObjValidator
 	} else if phone, err := Ask(label+".phone", defaultPhone, validator("phone")...); err != nil {
 		return nil, err
 	} else {
-		ret = &config.Person{
+		ret = &models.Person{
 			Name:  name,
 			Email: email,
 			Phone: phone,
@@ -73,11 +73,12 @@ func AskPerson(label string, defaults *config.Person, validators ...ObjValidator
 	return ret, nil
 }
 
-func AskProject(label string, defaults *config.Project, validators ...ObjValidator) (*config.Project, error) {
-	defaultName, defaultPath := "", ""
+func AskProject(label string, defaults *models.Project, validators ...ObjValidator) (*models.Project, error) {
+	defaultName, defaultPath, defaultSourceControl := "", "", ""
 	if defaults != nil {
 		defaultName = defaults.Name
 		defaultPath = defaults.Path
+		defaultSourceControl = defaults.SourceControl
 	}
 	validator := func(k string) []Validator {
 		ret := []Validator{}
@@ -90,21 +91,20 @@ func AskProject(label string, defaults *config.Project, validators ...ObjValidat
 		}
 		return ret
 	}
-	var ret *config.Project = nil
-	if name, err := Ask(label+".name", defaultName, validator("name")...); err != nil {
+	var err error
+	ret := &models.Project{}
+	if ret.Name, err = Ask(label+".name", defaultName, validator("name")...); err != nil {
 		return nil, err
 	} else {
-		var path string
-		var err error
-		if len(strings.TrimSpace(name)) > 0 {
-			if path, err = Ask(label+".path", defaultPath, validator("path")...); err != nil {
+		if len(strings.TrimSpace(ret.Name)) > 0 {
+			if ret.Name, err = Ask(label+".path", defaultPath, validator("path")...); err != nil {
+				return nil, err
+			}
+			if ret.SourceControl, err = Ask(label+".sourceControl", defaultSourceControl, validator("sourceControl")...); err != nil {
 				return nil, err
 			}
 		}
-		ret = &config.Project{
-			Name: name,
-			Path: path,
-		}
+
 	}
 	return ret, nil
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -10,8 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"log"
+
 	"github.com/spf13/cobra"
-	"github.com/welschmorgan/go-project-manager/config"
+	"github.com/welschmorgan/go-project-manager/models"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"github.com/welschmorgan/go-project-manager/vcs"
 )
@@ -46,7 +49,7 @@ func pathMustBeDir(p string) error {
 	return nil
 }
 
-func askName(wksp *config.Workspace) error {
+func askName(wksp *models.Workspace) error {
 	if dir, err := os.Getwd(); err != nil {
 		return err
 	} else if res, err := ui.Ask("Name", path.Base(dir), strMustNotContainOnlySpaces); err != nil {
@@ -57,7 +60,7 @@ func askName(wksp *config.Workspace) error {
 	return nil
 }
 
-func askPath(wksp *config.Workspace) error {
+func askPath(wksp *models.Workspace) error {
 	if dir, err := os.Getwd(); err != nil {
 		return err
 	} else if res, err := ui.Ask("Path", dir, strMustBeNonEmpty, strMustNotContainOnlySpaces, pathMustBeDir); err != nil {
@@ -68,11 +71,27 @@ func askPath(wksp *config.Workspace) error {
 	return nil
 }
 
-func askProjects(wksp *config.Workspace) error {
-	var projects []config.Project = make([]config.Project, 0)
+func askProjects(wksp *models.Workspace) error {
+	var projects []*models.Project = make([]*models.Project, 0)
+	var projectNames []string = make([]string, 0)
+	var projectIds map[string]int = map[string]int{}
 	var entries []fs.DirEntry
 	var cwd string
 	var err error
+	printProjects := func() {
+		projectNames = []string{}
+		projectIds = map[string]int{}
+		s := fmt.Sprintf("Found %d projects: ", len(projects))
+		for id, proj := range projects {
+			if id > 0 {
+				s += ", "
+			}
+			s += proj.Name
+			projectNames = append(projectNames, proj.Name)
+			projectIds[proj.Name] = len(projectNames) - 1
+		}
+		println(s)
+	}
 	if cwd, err = os.Getwd(); err != nil {
 		return err
 	} else if entries, err = os.ReadDir(cwd); err != nil {
@@ -80,46 +99,69 @@ func askProjects(wksp *config.Workspace) error {
 	} else {
 		for _, dir := range entries {
 			if dir.IsDir() && !strings.HasPrefix(strings.TrimSpace(dir.Name()), ".") {
-				projects = append(projects, config.Project{
-					Name: dir.Name(),
-					Path: filepath.Join(cwd, dir.Name()),
-				})
+				if sourceControl, err := vcs.Open(filepath.Join(cwd, dir.Name())); err != nil {
+					log.Printf("failed to open folder '%s'", err.Error())
+				} else {
+					projects = append(projects, models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Name()))
+				}
 			}
 		}
 	}
-	fmt.Printf("Found %d projects:\n", len(projects))
-	for _, proj := range projects {
-		fmt.Printf("- %s\n", proj)
-	}
-	fmt.Printf("Add empty project to stop\n")
+
+	var action string
+	var project string
 	done := false
 	for !done {
-		if res, err := ui.AskProject("Project", nil, nil); err != nil {
+		printProjects()
+		if action, err = ui.Select("Action", []string{"Quit", "Add", "Remove", "Edit", "Clear"}, nil); err != nil {
 			return err
-		} else if len(strings.TrimSpace(res.Name)) == 0 {
+		}
+		if action == "Remove" || action == "Edit" {
+			if project, err = ui.Select("Project", projectNames, nil); err != nil {
+				return err
+			}
+		}
+		defaultProject := models.Project{}
+		if action == "Edit" {
+			defaultProject.Name = projects[projectIds[project]].Name
+			defaultProject.Path = projects[projectIds[project]].Path
+		}
+		if action == "Edit" || action == "Add" {
+			if res, err := ui.AskProject("Project", &defaultProject, nil); err != nil {
+				return err
+			} else if len(strings.TrimSpace(res.Name)) == 0 {
+				done = true
+			} else {
+				projects = append(projects, res)
+				if action == "Edit" {
+					oldId := projectIds[defaultProject.Name]
+					delete(projectIds, defaultProject.Name)
+					projectIds[res.Name] = len(projects) - 1
+					projectNames = append(projectNames, res.Name)
+					projectNames = append(projectNames[:oldId], projectNames[oldId+1:]...)
+				}
+			}
+		}
+		if action == "Remove" {
+			id := projectIds[project]
+			projects = append(projects[:id], projects[id+1:]...)
+			projectNames = append(projectNames[:id], projectNames[id+1:]...)
+			delete(projectIds, project)
+		}
+		if action == "Clear" {
+			projects = []*models.Project{}
+			projectNames = []string{}
+			projectIds = map[string]int{}
+		}
+		if action == "Quit" {
 			done = true
-		} else {
-			projects = append(projects, *res)
 		}
 	}
 	wksp.Projects = projects
 	return nil
 }
 
-func askSourceControlType(wksp *config.Workspace) error {
-	names := []string{}
-	for _, s := range vcs.VersionControlSoftwares {
-		names = append(names, s.Name())
-	}
-	if res, err := ui.Select("Source Control Type", names, nil); err != nil {
-		return err
-	} else {
-		wksp.SourceControl = res
-	}
-	return nil
-}
-
-func askAuthor(wksp *config.Workspace) error {
+func askAuthor(wksp *models.Workspace) error {
 	if currentUser, err := user.Current(); err != nil {
 		return err
 	} else {
@@ -127,26 +169,98 @@ func askAuthor(wksp *config.Workspace) error {
 		if len(strings.TrimSpace(username)) == 0 {
 			username = currentUser.Username
 		}
-		if author, err := ui.AskPerson("Author", &config.Person{Name: username}); err != nil {
+		if author, err := ui.AskPerson("Author", &models.Person{Name: username}); err != nil {
 			return err
 		} else {
-			wksp.Author = *author
+			wksp.Author = author
 		}
 	}
 	return nil
 }
 
-func askManager(wksp *config.Workspace) error {
+func askManager(wksp *models.Workspace) error {
 	username := wksp.Author.Name
-	if manager, err := ui.AskPerson("Manager", &config.Person{Name: username}); err != nil {
+	if manager, err := ui.AskPerson("Manager", &models.Person{Name: username}); err != nil {
 		return err
 	} else {
-		wksp.Manager = *manager
+		wksp.Manager = manager
 	}
 	return nil
 }
 
-func askDeveloppers(wksp *config.Workspace) error {
+func askDeveloppers(wksp *models.Workspace) error {
+	developpers := []*models.Person{}
+	developperNames := []string{}
+	developperIds := map[string]int{}
+	for _, project := range wksp.Projects {
+		s := vcs.Get(project.SourceControl)
+		if err := s.Open(project.Path); err != nil {
+			return err
+		}
+		if projectDeveloppers, err := s.Authors(); err != nil {
+			return err
+		} else {
+			developpers = append(developpers, projectDeveloppers...)
+		}
+	}
+	printDeveloppers := func() {
+		developperNames = []string{}
+		developperIds = map[string]int{}
+		s := fmt.Sprintf("Found %d developpers: ", len(developpers))
+		for id, a := range developpers {
+			if id > 0 {
+				s += ", "
+			}
+			s += a.Name
+			developperNames = append(developperNames, a.Name)
+			developperIds[a.Name] = id
+		}
+		println(s)
+	}
+	done := false
+	var action string
+	var developperName string
+	var err error
+	for !done {
+		printDeveloppers()
+		if action, err = ui.Select("Action", []string{"Quit", "Add", "Remove", "Edit", "Clear"}, nil); err != nil {
+			return err
+		}
+		if action == "Edit" || action == "Remove" {
+			if developperName, err = ui.Select("Developper", developperNames, nil); err != nil {
+				return err
+			}
+		}
+		defaultDevelopper := models.Person{}
+		if action == "Edit" {
+			developper := developpers[developperIds[developperName]]
+			defaultDevelopper.Name = developper.Name
+			defaultDevelopper.Email = developper.Email
+			defaultDevelopper.Phone = developper.Phone
+		}
+		if action == "Edit" || action == "Add" {
+			if auth, err := ui.AskPerson("Developper", &defaultDevelopper, nil); err != nil {
+				return err
+			} else {
+				oldId := developperIds[auth.Name]
+				developpers = append(developpers, auth)
+				if action == "Edit" {
+					developpers = append(developpers[:oldId], developpers[oldId+1:]...)
+				}
+			}
+		}
+		if action == "Remove" {
+			id := developperIds[developperName]
+			developpers = append(developpers[:id], developpers[id+1:]...)
+		}
+		if action == "Clear" {
+			developpers = []*models.Person{}
+		}
+		if action == "Quit" {
+			done = true
+		}
+	}
+	wksp.Developpers = developpers
 	return nil
 }
 
@@ -158,7 +272,7 @@ var (
 This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
 `,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			wksp := config.Workspace{}
+			wksp := models.Workspace{}
 			if err = askName(&wksp); err != nil {
 				return err
 			}
@@ -166,9 +280,6 @@ This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
 				return err
 			}
 			if err = askProjects(&wksp); err != nil {
-				return err
-			}
-			if err = askSourceControlType(&wksp); err != nil {
 				return err
 			}
 			if err = askAuthor(&wksp); err != nil {
@@ -180,7 +291,11 @@ This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
 			if err = askDeveloppers(&wksp); err != nil {
 				return err
 			}
-			fmt.Printf("Write: %+v\n", wksp)
+			if json, err := json.MarshalIndent(&wksp, "", "  "); err != nil {
+				panic(err.Error())
+			} else {
+				fmt.Printf("Write: %s\n", json)
+			}
 			return nil
 		},
 	}
