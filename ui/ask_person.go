@@ -9,17 +9,7 @@ func AskPerson(label string, defaults *models.Person, validators ...ObjValidator
 		defaultEmail = defaults.Email
 		defaultPhone = defaults.Phone
 	}
-	validator := func(k string) []Validator {
-		ret := []Validator{}
-		for _, validator := range validators {
-			if validator != nil {
-				ret = append(ret, func(v string) error {
-					return validator(k, v)
-				})
-			}
-		}
-		return ret
-	}
+	validator := NewMultiObjValidator(validators...)
 	var ret *models.Person = nil
 	if name, err := Ask(label+".name", defaultName, validator("name")...); err != nil {
 		return nil, err

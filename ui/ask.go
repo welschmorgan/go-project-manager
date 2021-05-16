@@ -15,17 +15,7 @@ func Ask(label, defaultValue string, validators ...Validator) (string, error) {
 		// Templates: templates,
 		AllowEdit: true,
 		Default:   defaultValue,
-	}
-	prompt.Validate = func(s string) error {
-		var err error
-		for _, v := range validators {
-			if v != nil {
-				if err = v(s); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
+		Validate:  NewMultiValidator(validators...),
 	}
 	return prompt.Run()
 }

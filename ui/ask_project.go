@@ -14,17 +14,7 @@ func AskProject(label string, defaults *models.Project, validators ...ObjValidat
 		defaultUrl = defaults.Url
 		defaultSourceControl = defaults.SourceControl
 	}
-	validator := func(k string) []Validator {
-		ret := []Validator{}
-		for _, validator := range validators {
-			if validator != nil {
-				ret = append(ret, func(v string) error {
-					return validator(k, v)
-				})
-			}
-		}
-		return ret
-	}
+	validator := NewMultiObjValidator(validators...)
 	var err error
 	ret := &models.Project{}
 	if ret.Name, err = Ask(label+".name", defaultName, validator("name")...); err != nil {
