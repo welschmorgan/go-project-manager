@@ -1,6 +1,6 @@
-# go-project-manager
+# go-release-manager / GRLM
 
-Manage several git repositories
+Manage several git repositories for seamless releasing / synchronizing
 
 ## How to install dependencies
 
