@@ -193,7 +193,7 @@ func askDeveloppers(wksp *models.Workspace) error {
 		if err := s.Open(project.Path); err != nil {
 			return err
 		}
-		if projectDeveloppers, err := s.Authors(); err != nil {
+		if projectDeveloppers, err := s.Authors(nil); err != nil {
 			return err
 		} else {
 			developpers = append(developpers, projectDeveloppers...)
