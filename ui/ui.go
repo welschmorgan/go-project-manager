@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/manifoldco/promptui"
@@ -36,6 +37,27 @@ func Ask(label, defaultValue string, validators ...Validator) (string, error) {
 		return nil
 	}
 	return prompt.Run()
+}
+
+func AskYN(label string, validators ...Validator) (bool, error) {
+	prompt := promptui.Prompt{
+		Label:     label,
+		IsConfirm: true,
+	}
+	prompt.Validate = func(s string) error {
+		var err error
+		for _, v := range validators {
+			if v != nil {
+				if err = v(s); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	res, _ := prompt.Run()
+	yesRule := regexp.MustCompile("(?i)y(?:es)?|1")
+	return yesRule.MatchString(res), nil
 }
 
 func AskPerson(label string, defaults *models.Person, validators ...ObjValidator) (*models.Person, error) {
@@ -119,7 +141,6 @@ func Select(label string, items []string, validator func(string) error) (string,
 		Label: label,
 		Items: items,
 	}
-
 	_, result, err := prompt.Run()
 	return result, err
 }

@@ -341,6 +341,11 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 			wksp := models.Workspace{}
 			path := filepath.Join(workingDirectory, workspaceFilename)
 			if _, err := os.Stat(path); err == nil {
+				if ret, err := ui.AskYN("Workspace already initialized, do you want to reconfigure it"); err != nil {
+					return err
+				} else if !ret {
+					return errors.New("abort")
+				}
 				if content, err := os.ReadFile(path); err != nil {
 					return err
 				} else if err = yaml.Unmarshal(content, &wksp); err != nil {
