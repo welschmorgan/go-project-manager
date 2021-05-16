@@ -1,8 +1,12 @@
 package ui
 
-import "github.com/manifoldco/promptui"
+import (
+	"fmt"
 
-func Ask(label, defaultValue string, validators ...Validator) (string, error) {
+	"github.com/manifoldco/promptui"
+)
+
+func Ask(label, defaultValue interface{}, validators ...Validator) (string, error) {
 	// templates := &promptui.PromptTemplates{
 	// 	Prompt:  "{{ . }} ",
 	// 	Valid:   "{{ . | green }} ",
@@ -14,7 +18,7 @@ func Ask(label, defaultValue string, validators ...Validator) (string, error) {
 		Label: label,
 		// Templates: templates,
 		AllowEdit: true,
-		Default:   defaultValue,
+		Default:   fmt.Sprintf("%v", defaultValue),
 		Validate:  NewMultiValidator(validators...),
 	}
 	return prompt.Run()
