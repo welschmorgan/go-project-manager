@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -10,24 +11,16 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile        string
-	workspacesRoot string
+	cfgFile           string
+	workspacesRoot    string
+	workingDirectory  string
+	workspaceFilename string = ".grlm-workspace.yaml"
+	verbose           bool
 
 	rootCmd = &cobra.Command{
 		Use:   "grlm [commands]",
 		Short: "Release multiple projects in a single go",
 		Long:  `GRLM allows releasing multiple projects declared in a workspace`,
-	}
-
-	initCmd = &cobra.Command{
-		Use:   "init [sub]",
-		Short: "Initialize the current folder as a workspace",
-		Long: `Initialize the current folder and turns it into a workspace.
-This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
-`,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Writing workspace config file...")
-		},
 	}
 )
 
@@ -39,7 +32,15 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grlm.yaml)")
+	if cwd, err := os.Getwd(); err != nil {
+		panic(err.Error())
+	} else {
+		workingDirectory = cwd
+	}
+
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is $HOME/.grlm.yaml)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "show additionnal log messages")
+	rootCmd.PersistentFlags().StringVarP(&workingDirectory, "change-directory", "C", workingDirectory, "change working directory")
 	// rootCmd.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")
 	// rootCmd.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
 	// rootCmd.PersistentFlags().Bool("viper", true, "use Viper for configuration")
@@ -81,5 +82,15 @@ func initConfig() {
 		}
 		panic(fmt.Errorf("configuration error: %s", err))
 	}
-	fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if verbose {
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+	if _, err := os.Stat(workingDirectory); err != nil && os.IsNotExist(err) {
+		if err := os.MkdirAll(workingDirectory, 0755); err != nil {
+			fmt.Printf("error: %s\n", err.Error())
+		}
+	}
+	if err := os.Chdir(workingDirectory); err != nil {
+		panic(err.Error())
+	}
 }
