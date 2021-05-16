@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,6 +16,7 @@ import (
 	"github.com/welschmorgan/go-project-manager/models"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"github.com/welschmorgan/go-project-manager/vcs"
+	"gopkg.in/yaml.v2"
 )
 
 func strMustBeNonEmpty(s string) error {
@@ -265,10 +265,18 @@ var (
 		Use:   "init [sub]",
 		Short: "Initialize the current folder as a workspace",
 		Long: `Initialize the current folder and turns it into a workspace.
-This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
+This will write '.grlm-workspace.yaml' and will interactively ask a few questions.
 `,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			wksp := models.Workspace{}
+			path := filepath.Join(workingDirectory, workspaceFilename)
+			if _, err := os.Stat(path); err == nil {
+				if content, err := os.ReadFile(path); err != nil {
+					return err
+				} else if err = yaml.Unmarshal(content, &wksp); err != nil {
+					return err
+				}
+			}
 			if err = askName(&wksp); err != nil {
 				return err
 			}
@@ -287,10 +295,13 @@ This will write 'grlm.worspace.yaml' and will interactively ask a few questions.
 			if err = askDeveloppers(&wksp); err != nil {
 				return err
 			}
-			if json, err := json.MarshalIndent(&wksp, "", "  "); err != nil {
+			if yaml, err := yaml.Marshal(&wksp); err != nil {
 				panic(err.Error())
 			} else {
-				fmt.Printf("Write: %s\n", json)
+				if err := os.WriteFile(path, yaml, 0755); err != nil {
+					return err
+				}
+				fmt.Printf("Written '%s':\n%s\n", path, yaml)
 			}
 			return nil
 		},

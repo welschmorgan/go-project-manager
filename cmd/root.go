@@ -11,10 +11,11 @@ import (
 
 var (
 	// Used for flags.
-	cfgFile          string
-	workspacesRoot   string
-	workingDirectory string
-	verbose          bool
+	cfgFile           string
+	workspacesRoot    string
+	workingDirectory  string
+	workspaceFilename string = ".grlm-workspace.yaml"
+	verbose           bool
 
 	rootCmd = &cobra.Command{
 		Use:   "grlm [commands]",

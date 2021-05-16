@@ -95,17 +95,10 @@ func Get(n string) VersionControlSoftware {
 }
 
 func Open(path string) (VersionControlSoftware, error) {
-	println("detecting vcs for", path)
 	for _, s := range All {
-		println("\ttrying", s.Name())
 		ok, err := s.Detect(path)
 		if err != nil {
-			println("\t\t-> error:", err.Error())
-		}
-		if ok {
-			println("\t\t-> ok!")
-		} else {
-			println("\t\t-> not ok!")
+			fmt.Fprintf(os.Stderr, "error: %s: %s", path, err.Error())
 		}
 		if ok {
 			return s, s.Open(path)
