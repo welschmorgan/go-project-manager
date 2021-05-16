@@ -11,31 +11,31 @@ import (
 var errMenuQuit = errors.New("user quit")
 
 type CRUDMenu struct {
-	workspace    *models.Workspace
-	key          string
-	subKey       string
-	refItem      interface{}
-	actions      []CRUDAction
-	actionLabels map[uint8]string
-	items        []interface{}
-	names        []string
-	indices      map[string]int
+	Workspace    *models.Workspace
+	Key          string
+	SubKey       string
+	RefItem      interface{}
+	Actions      []CRUDAction
+	ActionLabels map[uint8]string
+	Items        []interface{}
+	Names        []string
+	Indices      map[string]int
 }
 
 func NewCRUDMenu(wksp *models.Workspace, key, subKey string, refItem interface{}, actions []CRUDAction, actionLabels map[uint8]string) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
-		workspace:    wksp,
-		key:          key,
-		subKey:       subKey,
-		refItem:      refItem,
-		actions:      actions,
-		actionLabels: actionLabels,
-		items:        []interface{}{},
-		names:        make([]string, 0),
-		indices:      map[string]int{},
+		Workspace:    wksp,
+		Key:          key,
+		SubKey:       subKey,
+		RefItem:      refItem,
+		Actions:      actions,
+		ActionLabels: actionLabels,
+		Items:        []interface{}{},
+		Names:        make([]string, 0),
+		Indices:      map[string]int{},
 	}
-	if menu.actionLabels == nil || len(menu.actionLabels) == 0 {
-		menu.actionLabels = map[uint8]string{
+	if menu.ActionLabels == nil || len(menu.ActionLabels) == 0 {
+		menu.ActionLabels = map[uint8]string{
 			ActionAdd.Id:    "Add new item",
 			ActionEdit.Id:   "Edit existing item",
 			ActionRemove.Id: "Remove existing item",
@@ -45,49 +45,53 @@ func NewCRUDMenu(wksp *models.Workspace, key, subKey string, refItem interface{}
 	rv := reflect.Indirect(reflect.ValueOf(wksp))
 	rf := rv.FieldByName(key)
 	for i := 0; i < rf.Len(); i++ {
-		menu.items = append(menu.items, reflect.Indirect(rf.Index(i)).Interface())
+		menu.Items = append(menu.Items, reflect.Indirect(rf.Index(i)).Interface())
+	}
+	menu.Update()
+	if err := menu.Discover(); err != nil {
+		return nil, err
 	}
 	menu.Update()
 	return menu, nil
 }
 
 func (m *CRUDMenu) Get(name string) interface{} {
-	if id, ok := m.indices[name]; ok {
-		return m.items[id]
+	if id, ok := m.Indices[name]; ok {
+		return m.Items[id]
 	} else {
 		return nil
 	}
 }
 
 func (m *CRUDMenu) Edit(id int, newItem interface{}) error {
-	if id < 0 || id >= len(m.items) {
+	if id < 0 || id >= len(m.Items) {
 		return errors.New("invalid project")
 	}
-	m.items[id] = newItem
+	m.Items[id] = newItem
 	m.Update()
 	return nil
 }
 
 func (m *CRUDMenu) Create(newItem interface{}) {
-	m.items = append(m.items, reflect.Indirect(reflect.ValueOf(newItem)).Interface())
+	m.Items = append(m.Items, reflect.Indirect(reflect.ValueOf(newItem)).Interface())
 	m.Update()
 }
 
 func (m *CRUDMenu) Remove(name string) {
-	if id, ok := m.indices[name]; ok {
-		m.items = append(m.items[:id], m.items[id+1:]...)
+	if id, ok := m.Indices[name]; ok {
+		m.Items = append(m.Items[:id], m.Items[id+1:]...)
 		m.Update()
 	}
 }
 
 func (m *CRUDMenu) Clear() {
-	m.items = []interface{}{}
+	m.Items = []interface{}{}
 	m.Update()
 }
 
 func (m *CRUDMenu) RenderItems() {
-	s := fmt.Sprintf("Found %d items: ", len(m.items))
-	for id, item := range m.items {
+	s := fmt.Sprintf("Found %d items: ", len(m.Items))
+	for id, item := range m.Items {
 		if id > 0 {
 			s += ", "
 		}
@@ -95,32 +99,32 @@ func (m *CRUDMenu) RenderItems() {
 		if rv.Kind() == reflect.Ptr {
 			rv = reflect.Indirect(rv)
 		}
-		rf := rv.FieldByName(m.subKey)
+		rf := rv.FieldByName(m.SubKey)
 		s += rf.String()
 	}
 	println(s)
 }
 
 func (m *CRUDMenu) Update() {
-	if m.items == nil {
-		m.items = []interface{}{}
+	if m.Items == nil {
+		m.Items = []interface{}{}
 	}
-	m.names = []string{}
-	m.indices = map[string]int{}
-	for _, p := range m.items {
+	m.Names = []string{}
+	m.Indices = map[string]int{}
+	for _, p := range m.Items {
 		rv := reflect.ValueOf(p)
 		if rv.Kind() == reflect.Ptr {
 			rv = reflect.Indirect(rv)
 		}
-		rf := rv.FieldByName(m.subKey)
-		m.names = append(m.names, rf.String())
-		m.indices[rf.String()] = len(m.names) - 1
+		rf := rv.FieldByName(m.SubKey)
+		m.Names = append(m.Names, rf.String())
+		m.Indices[rf.String()] = len(m.Names) - 1
 	}
 }
 
 func (m *CRUDMenu) SelectAction() (CRUDAction, error) {
 	actionNames := []string{}
-	for _, a := range m.actions {
+	for _, a := range m.Actions {
 		actionNames = append(actionNames, a.String())
 	}
 	if action, err := Select("Action", actionNames, nil); err != nil {
@@ -156,21 +160,21 @@ func (m *CRUDMenu) RenderOnce() error {
 		return err
 	}
 	if action == ActionRemove || action == ActionEdit {
-		if project, err = Select(m.actionLabels[action.Id], m.names, nil); err != nil {
+		if project, err = Select(m.ActionLabels[action.Id], m.Names, nil); err != nil {
 			return err
 		}
 	}
-	defaultProject := m.refItem
+	defaultProject := m.RefItem
 	if action == ActionEdit {
 		defaultProject = m.Get(project)
 	}
 	if action == ActionEdit || action == ActionAdd {
-		if res, err := AskObject(m.actionLabels[action.Id], defaultProject, nil); err != nil {
+		if res, err := AskObject(m.ActionLabels[action.Id], defaultProject, nil); err != nil {
 			return err
 		} else if action == ActionEdit {
 			rv := reflect.Indirect(reflect.ValueOf(defaultProject))
-			rf := rv.FieldByName(m.subKey)
-			if err := m.Edit(m.indices[rf.String()], res); err != nil {
+			rf := rv.FieldByName(m.SubKey)
+			if err := m.Edit(m.Indices[rf.String()], res); err != nil {
 				return err
 			}
 		} else if action == ActionAdd {
@@ -186,5 +190,9 @@ func (m *CRUDMenu) RenderOnce() error {
 	if action == ActionQuit {
 		return errMenuQuit
 	}
+	return nil
+}
+
+func (m *CRUDMenu) Discover() error {
 	return nil
 }
