@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/welschmorgan/go-project-manager/fs"
 	"github.com/welschmorgan/go-project-manager/models"
 )
 
@@ -47,8 +48,8 @@ func (g *Git) Push() error                            { return errNotYetImpl }
 func (g *Git) Tag(name, commit, message string) error { return errNotYetImpl }
 func (g *Git) Merge(source, dest string) error        { return errNotYetImpl }
 func (g *Git) Authors() ([]*models.Person, error) {
-	Pushd(g.path)
-	defer Popd()
+	fs.Pushd(g.path)
+	defer fs.Popd()
 	var lines []string
 	var err error
 	if lines, err, _ = runCommand("git", "log", "--format=%cn <%ce>"); err != nil {
@@ -66,8 +67,8 @@ func (g *Git) Authors() ([]*models.Person, error) {
 }
 
 func (g *Git) Remotes() (map[string]string, error) {
-	Pushd(g.path)
-	defer Popd()
+	fs.Pushd(g.path)
+	defer fs.Popd()
 	var lines []string
 	var err error
 	if lines, err, _ = runCommand("git", "remote", "-v"); err != nil {

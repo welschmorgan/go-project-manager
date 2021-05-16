@@ -31,32 +31,6 @@ type VersionControlSoftware interface {
 	Remotes() (map[string]string, error)
 }
 
-var dirStack []string = []string{}
-
-func Pushd(newDir string) (string, error) {
-	if oldCwd, err := os.Getwd(); err != nil {
-		return "", err
-	} else {
-		dirStack = append(dirStack, oldCwd)
-	}
-	if err := os.Chdir(newDir); err != nil {
-		return "", err
-	}
-	return newDir, nil
-}
-
-func Popd() (string, error) {
-	if len(dirStack) == 0 {
-		return "", errors.New("no directory in stack")
-	}
-	newDir := dirStack[len(dirStack)-1]
-	if err := os.Chdir(newDir); err != nil {
-		return "", err
-	}
-	dirStack = dirStack[0 : len(dirStack)-1]
-	return newDir, nil
-}
-
 // Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
 func runCommand(name string, args ...string) ([]string, error, []string) {
 	var stdout bytes.Buffer
