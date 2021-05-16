@@ -71,40 +71,40 @@ func askDeveloppers(wksp *models.Workspace) error {
 	var err error
 	for !done {
 		printDeveloppers()
-		if action, err = ui.Select("Action", []string{"Quit", "Add", "Remove", "Edit", "Clear"}, nil); err != nil {
+		if action, err = ui.Select("Action", []string{"ActionQuit", "ActionAdd", "ActionRemove", "ActionEdit", "ActionClear"}, nil); err != nil {
 			return err
 		}
-		if action == "Edit" || action == "Remove" {
+		if action == "ActionEdit" || action == "ActionRemove" {
 			if developperName, err = ui.Select("Developper", developperNames, nil); err != nil {
 				return err
 			}
 		}
 		defaultDevelopper := models.Person{}
-		if action == "Edit" {
+		if action == "ActionEdit" {
 			developper := developpers[developperIds[developperName]]
 			defaultDevelopper.Name = developper.Name
 			defaultDevelopper.Email = developper.Email
 			defaultDevelopper.Phone = developper.Phone
 		}
-		if action == "Edit" || action == "Add" {
+		if action == "ActionEdit" || action == "ActionAdd" {
 			if auth, err := ui.AskPerson("Developper", &defaultDevelopper, nil); err != nil {
 				return err
 			} else {
 				oldId := developperIds[auth.Name]
 				developpers = append(developpers, auth)
-				if action == "Edit" {
+				if action == "ActionEdit" {
 					developpers = append(developpers[:oldId], developpers[oldId+1:]...)
 				}
 			}
 		}
-		if action == "Remove" {
+		if action == "ActionRemove" {
 			id := developperIds[developperName]
 			developpers = append(developpers[:id], developpers[id+1:]...)
 		}
-		if action == "Clear" {
+		if action == "ActionClear" {
 			developpers = []*models.Person{}
 		}
-		if action == "Quit" {
+		if action == "ActionQuit" {
 			done = true
 		}
 	}

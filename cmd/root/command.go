@@ -44,8 +44,8 @@ func init() {
 	Command.PersistentFlags().StringVar(&config.WorkspacesRoot, "workspaces-root", "$HOME/projects", "The root folder where to find workspaces")
 	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces-root"))
 
-	// Command.AddCommand(addCmd)
-	Command.AddCommand(initCommand.Command)
+	// Command.ActionAddCommand(addCmd)
+	Command.ActionAddCommand(initCommand.Command)
 }
 
 func initConfig() {
@@ -53,11 +53,11 @@ func initConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(config.CfgFile)
 	} else {
-		viper.SetConfigName("grlm")        // name of config file (without extension)
-		viper.SetConfigType("yaml")        // REQUIRED if the config file does not have the extension in the name
-		viper.AddConfigPath("/etc/grlm/")  // path to look for the config file in
-		viper.AddConfigPath("$HOME/.grlm") // call multiple times to add many search paths
-		viper.AddConfigPath(".")           // optionally look for config in the working directory
+		viper.SetConfigName("grlm")              // name of config file (without extension)
+		viper.SetConfigType("yaml")              // REQUIRED if the config file does not have the extension in the name
+		viper.ActionAddConfigPath("/etc/grlm/")  // path to look for the config file in
+		viper.ActionAddConfigPath("$HOME/.grlm") // call multiple times to add many search paths
+		viper.ActionAddConfigPath(".")           // optionally look for config in the working directory
 	}
 
 	viper.AutomaticEnv()
