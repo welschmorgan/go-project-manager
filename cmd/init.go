@@ -50,34 +50,53 @@ func pathMustBeDir(p string) error {
 }
 
 func askName(wksp *models.Workspace) error {
-	if dir, err := os.Getwd(); err != nil {
+	var dir string
+	var err error
+	if len(strings.TrimSpace(wksp.Name)) == 0 {
+		if dir, err = os.Getwd(); err != nil {
+			return err
+		}
+		wksp.Name = path.Base(dir)
+	}
+	if wksp.Name, err = ui.Ask("Name", wksp.Name, strMustNotContainOnlySpaces); err != nil {
 		return err
-	} else if res, err := ui.Ask("Name", path.Base(dir), strMustNotContainOnlySpaces); err != nil {
-		return err
-	} else {
-		wksp.Name = res
 	}
 	return nil
 }
 
 func askPath(wksp *models.Workspace) error {
-	if dir, err := os.Getwd(); err != nil {
+	var dir string
+	var err error
+	if len(strings.TrimSpace(wksp.Path)) == 0 {
+		if dir, err = os.Getwd(); err != nil {
+			return err
+		}
+		wksp.Path = dir
+	}
+	if wksp.Path, err = ui.Ask("Path", wksp.Path, strMustBeNonEmpty, strMustNotContainOnlySpaces, pathMustBeDir); err != nil {
 		return err
-	} else if res, err := ui.Ask("Path", dir, strMustBeNonEmpty, strMustNotContainOnlySpaces, pathMustBeDir); err != nil {
-		return err
-	} else {
-		wksp.Path = res
 	}
 	return nil
 }
 
 func askProjects(wksp *models.Workspace) error {
-	var projects []*models.Project = make([]*models.Project, 0)
+	var projects []*models.Project = wksp.Projects
+	if projects == nil {
+		projects = []*models.Project{}
+	}
 	var projectNames []string = make([]string, 0)
 	var projectIds map[string]int = map[string]int{}
 	var entries []fs.DirEntry
 	var cwd string
 	var err error
+	getProjectId := func(name string) int {
+		for id, p := range projects {
+			if p != nil && p.Name == name {
+				return id
+			}
+		}
+		return -1
+	}
 	printProjects := func() {
 		projectNames = []string{}
 		projectIds = map[string]int{}
@@ -102,7 +121,24 @@ func askProjects(wksp *models.Workspace) error {
 				if sourceControl, err := vcs.Open(filepath.Join(cwd, dir.Name())); err != nil {
 					log.Printf("failed to open folder '%s'", err.Error())
 				} else {
-					projects = append(projects, models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
+					id := getProjectId(dir.Name())
+					if id != -1 {
+						project := projects[id]
+						if len(strings.TrimSpace(project.Name)) == 0 {
+							project.Name = dir.Name()
+						}
+						if len(strings.TrimSpace(project.Path)) == 0 {
+							project.Path = sourceControl.Path()
+						}
+						if len(strings.TrimSpace(project.SourceControl)) == 0 {
+							project.SourceControl = sourceControl.Name()
+						}
+						if len(strings.TrimSpace(project.SourceControl)) == 0 {
+							project.Url = sourceControl.Url()
+						}
+					} else {
+						projects = append(projects, models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
+					}
 				}
 			}
 		}
@@ -158,36 +194,54 @@ func askProjects(wksp *models.Workspace) error {
 }
 
 func askAuthor(wksp *models.Workspace) error {
-	if currentUser, err := user.Current(); err != nil {
-		return err
-	} else {
-		username := currentUser.Name
-		if len(strings.TrimSpace(username)) == 0 {
-			username = currentUser.Username
-		}
-		if author, err := ui.AskPerson("Author", &models.Person{Name: username}); err != nil {
+	var currentUser *user.User
+	var err error
+	var defaultAuthor *models.Person = wksp.Author
+	if defaultAuthor != nil && len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
+		if currentUser, err = user.Current(); err != nil {
 			return err
-		} else {
-			wksp.Author = author
 		}
+		defaultAuthor.Name = currentUser.Name
+		if len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
+			defaultAuthor.Name = currentUser.Username
+		}
+	}
+	if wksp.Author, err = ui.AskPerson("Author", defaultAuthor); err != nil {
+		return err
 	}
 	return nil
 }
 
 func askManager(wksp *models.Workspace) error {
-	username := wksp.Author.Name
-	if manager, err := ui.AskPerson("Manager", &models.Person{Name: username}); err != nil {
+	var username string
+	var err error
+	if wksp.Manager != nil {
+		username = wksp.Manager.Name
+	}
+	if len(strings.TrimSpace(username)) == 0 && wksp.Author != nil {
+		username = wksp.Author.Name
+	}
+	if wksp.Manager, err = ui.AskPerson("Manager", &models.Person{Name: username}); err != nil {
 		return err
-	} else {
-		wksp.Manager = manager
 	}
 	return nil
 }
 
 func askDeveloppers(wksp *models.Workspace) error {
-	developpers := []*models.Person{}
+	var developpers []*models.Person = wksp.Developpers
+	if developpers == nil {
+		developpers = []*models.Person{}
+	}
 	developperNames := []string{}
 	developperIds := map[string]int{}
+	getDevelopperId := func(name string) int {
+		for id, d := range developpers {
+			if d != nil && d.Name == name {
+				return id
+			}
+		}
+		return -1
+	}
 	for _, project := range wksp.Projects {
 		s := vcs.Get(project.SourceControl)
 		if err := s.Open(project.Path); err != nil {
@@ -196,7 +250,23 @@ func askDeveloppers(wksp *models.Workspace) error {
 		if projectDeveloppers, err := s.Authors(nil); err != nil {
 			return err
 		} else {
-			developpers = append(developpers, projectDeveloppers...)
+			for _, tmpDev := range projectDeveloppers {
+				id := getDevelopperId(tmpDev.Name)
+				if id != -1 {
+					dev := developpers[id]
+					if len(strings.TrimSpace(dev.Name)) == 0 {
+						dev.Name = tmpDev.Name
+					}
+					if len(strings.TrimSpace(dev.Phone)) == 0 {
+						dev.Phone = tmpDev.Phone
+					}
+					if len(strings.TrimSpace(dev.Email)) == 0 {
+						dev.Email = tmpDev.Email
+					}
+				} else {
+					developpers = append(developpers, tmpDev)
+				}
+			}
 		}
 	}
 	printDeveloppers := func() {
