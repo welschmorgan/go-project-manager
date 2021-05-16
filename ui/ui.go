@@ -74,10 +74,11 @@ func AskPerson(label string, defaults *models.Person, validators ...ObjValidator
 }
 
 func AskProject(label string, defaults *models.Project, validators ...ObjValidator) (*models.Project, error) {
-	defaultName, defaultPath, defaultSourceControl := "", "", ""
+	defaultName, defaultPath, defaultUrl, defaultSourceControl := "", "", "", ""
 	if defaults != nil {
 		defaultName = defaults.Name
 		defaultPath = defaults.Path
+		defaultUrl = defaults.Url
 		defaultSourceControl = defaults.SourceControl
 	}
 	validator := func(k string) []Validator {
@@ -97,7 +98,10 @@ func AskProject(label string, defaults *models.Project, validators ...ObjValidat
 		return nil, err
 	} else {
 		if len(strings.TrimSpace(ret.Name)) > 0 {
-			if ret.Name, err = Ask(label+".path", defaultPath, validator("path")...); err != nil {
+			if ret.Path, err = Ask(label+".path", defaultPath, validator("path")...); err != nil {
+				return nil, err
+			}
+			if ret.Url, err = Ask(label+".url", defaultUrl, validator("url")...); err != nil {
 				return nil, err
 			}
 			if ret.SourceControl, err = Ask(label+".sourceControl", defaultSourceControl, validator("sourceControl")...); err != nil {

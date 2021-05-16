@@ -102,7 +102,7 @@ func askProjects(wksp *models.Workspace) error {
 				if sourceControl, err := vcs.Open(filepath.Join(cwd, dir.Name())); err != nil {
 					log.Printf("failed to open folder '%s'", err.Error())
 				} else {
-					projects = append(projects, models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Name()))
+					projects = append(projects, models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
 				}
 			}
 		}
@@ -123,8 +123,11 @@ func askProjects(wksp *models.Workspace) error {
 		}
 		defaultProject := models.Project{}
 		if action == "Edit" {
-			defaultProject.Name = projects[projectIds[project]].Name
-			defaultProject.Path = projects[projectIds[project]].Path
+			id := projectIds[project]
+			defaultProject.Name = projects[id].Name
+			defaultProject.Path = projects[id].Path
+			defaultProject.Url = projects[id].Url
+			defaultProject.SourceControl = projects[id].SourceControl
 		}
 		if action == "Edit" || action == "Add" {
 			if res, err := ui.AskProject("Project", &defaultProject, nil); err != nil {
@@ -135,23 +138,16 @@ func askProjects(wksp *models.Workspace) error {
 				projects = append(projects, res)
 				if action == "Edit" {
 					oldId := projectIds[defaultProject.Name]
-					delete(projectIds, defaultProject.Name)
-					projectIds[res.Name] = len(projects) - 1
-					projectNames = append(projectNames, res.Name)
-					projectNames = append(projectNames[:oldId], projectNames[oldId+1:]...)
+					projects = append(projects[:oldId], projects[oldId+1:]...)
 				}
 			}
 		}
 		if action == "Remove" {
 			id := projectIds[project]
 			projects = append(projects[:id], projects[id+1:]...)
-			projectNames = append(projectNames[:id], projectNames[id+1:]...)
-			delete(projectIds, project)
 		}
 		if action == "Clear" {
 			projects = []*models.Project{}
-			projectNames = []string{}
-			projectIds = map[string]int{}
 		}
 		if action == "Quit" {
 			done = true

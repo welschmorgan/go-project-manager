@@ -5,10 +5,12 @@ import "github.com/welschmorgan/go-project-manager/models"
 type Svn struct {
 	VersionControlSoftware
 	path string
+	url  string
 }
 
 func (s *Svn) Name() string                           { return "Svn" }
 func (s *Svn) Path() string                           { return s.path }
+func (s *Svn) Url() string                            { return s.url }
 func (s *Svn) Detect(path string) (bool, error)       { return false, errNotYetImpl }
 func (s *Svn) Open(p string) error                    { return errNotYetImpl }
 func (s *Svn) Clone(url, path string) error           { return errNotYetImpl }

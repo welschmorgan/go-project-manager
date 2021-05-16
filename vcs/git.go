@@ -1,9 +1,8 @@
 package vcs
 
 import (
-	"bytes"
+	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,10 +13,12 @@ import (
 type Git struct {
 	VersionControlSoftware
 	path string
+	url  string
 }
 
 func (g *Git) Name() string { return "Git" }
 func (g *Git) Path() string { return g.path }
+func (g *Git) Url() string  { return g.url }
 func (g *Git) Detect(path string) (bool, error) {
 	if _, err := os.Stat(filepath.Join(path, ".git")); err != nil {
 		return false, err
@@ -26,6 +27,17 @@ func (g *Git) Detect(path string) (bool, error) {
 }
 func (g *Git) Open(p string) error {
 	g.path = p
+	if remotes, err := g.Remotes(); err != nil {
+		return err
+	} else if len(remotes) == 0 {
+		return fmt.Errorf("no remotes configured for '%s'", filepath.Base(g.path))
+	} else {
+		g.url = ""
+		for _, r := range remotes {
+			g.url = r
+			break
+		}
+	}
 	return nil
 }
 func (g *Git) Clone(url, path string) error           { return errNotYetImpl }
@@ -37,26 +49,36 @@ func (g *Git) Merge(source, dest string) error        { return errNotYetImpl }
 func (g *Git) Authors() ([]*models.Person, error) {
 	Pushd(g.path)
 	defer Popd()
-	var stdout bytes.Buffer
-	cmd := exec.Command("git", "log", "--format=%cn <%ce>")
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = &stdout
-	if err := cmd.Run(); err != nil {
+	var lines []string
+	var err error
+	if lines, err, _ = runCommand("git", "log", "--format=%cn <%ce>"); err != nil {
 		return nil, err
 	}
 	ret := []*models.Person{}
-	lines := map[string]bool{}
-	for line, err := stdout.ReadString('\n'); err == nil; line, err = stdout.ReadString('\n') {
-		line = strings.TrimSpace(line)
-		if ok := lines[line]; !ok {
-			lines[line] = true
-		}
-	}
-	for line, _ := range lines {
+	for _, line := range lines {
 		rule := regexp.MustCompile("(.*)<(.*?)>")
 		matches := rule.FindAllStringSubmatch(line, -1)
 		for _, match := range matches {
 			ret = append(ret, models.NewPerson(strings.TrimSpace(match[1]), strings.TrimSpace(match[2]), ""))
+		}
+	}
+	return ret, nil
+}
+
+func (g *Git) Remotes() (map[string]string, error) {
+	Pushd(g.path)
+	defer Popd()
+	var lines []string
+	var err error
+	if lines, err, _ = runCommand("git", "remote", "-v"); err != nil {
+		return nil, err
+	}
+	ret := map[string]string{}
+	for _, line := range lines {
+		rule := regexp.MustCompile(`(\w+)\s+(.*)\s+\((\w+)\)`)
+		matches := rule.FindAllStringSubmatch(line, -1)
+		for _, match := range matches {
+			ret[strings.TrimSpace(match[1])] = strings.TrimSpace(match[2])
 		}
 	}
 	return ret, nil
