@@ -19,7 +19,7 @@ type ProjectMenu struct {
 func NewProjectMenu(workspace *models.Workspace) (*ProjectMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
-		"Projects", "Name", models.Project{},
+		"Projects", "Name", &models.Project{},
 		[]ui.CRUDAction{ui.ActionQuit, ui.ActionAdd, ui.ActionEdit, ui.ActionRemove, ui.ActionClear},
 		map[uint8]string{
 			ui.ActionAdd.Id:    "Add new project",

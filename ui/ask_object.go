@@ -10,6 +10,9 @@ import (
 func AskObject(label string, defaultValue interface{}, validators ...ObjValidator) (interface{}, error) {
 	reflectedDefaultValue := reflect.Indirect(reflect.ValueOf(defaultValue))
 	reflectedDefaultType := reflect.TypeOf(defaultValue)
+	if !reflectedDefaultValue.IsValid() {
+		return nil, fmt.Errorf("default value is not valid: %+v", defaultValue)
+	}
 	if reflectedDefaultType.Kind() == reflect.Ptr {
 		reflectedDefaultType = reflectedDefaultType.Elem()
 	}

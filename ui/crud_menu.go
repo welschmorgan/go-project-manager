@@ -142,10 +142,34 @@ func (m *CRUDMenu) Render() error {
 	for !done {
 		if err = m.RenderOnce(); err != nil {
 			if err == errMenuQuit {
-				return nil
+				done = true
+			} else {
+				return err
 			}
-			return err
 		}
+	}
+	wrv := reflect.Indirect(reflect.ValueOf(m.Workspace))
+	wrf := wrv.FieldByName(m.Key)
+	mrv := reflect.Indirect(reflect.ValueOf(m.Items))
+	fmt.Printf("MakeSlice: len = %d, cap = %d\n", len(m.Items), cap(m.Items))
+	wrf.Set(reflect.MakeSlice(wrf.Type(), len(m.Items), cap(m.Items)))
+	refType := reflect.TypeOf(m.RefItem)
+	for i := 0; i < wrf.Len(); i++ {
+		fmt.Printf("update workspace.item%d = %+v\n", i, mrv.Index(i).Interface())
+		itemRT := refType
+		if itemRT.Kind() == reflect.Ptr {
+			itemRT = itemRT.Elem()
+		}
+		newItem := reflect.New(itemRT)
+		itemRV := mrv.Index(i)
+		for j := 0; j < itemRT.NumField(); j++ {
+			fv := itemRV.Elem().Field(j)
+			fmt.Printf("\t+ update field %d - %s(%v)\n", j, fv.Type().Name(), fv.String())
+			nfv := reflect.Indirect(newItem.Elem().Field(j))
+			nfv.Set(fv)
+		}
+		// newItem.Set(mrv.Index(i))
+		wrf.Index(i).Set(newItem)
 	}
 	return nil
 }

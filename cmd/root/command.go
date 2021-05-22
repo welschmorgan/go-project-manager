@@ -72,8 +72,8 @@ func initConfig() {
 			// Config file not found; ignore error if desired
 		} else {
 			// Config file was found but another error was produced
+			panic(fmt.Errorf("configuration error: %s", err))
 		}
-		panic(fmt.Errorf("configuration error: %s", err))
 	}
 	if config.Verbose {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
