@@ -12,6 +12,7 @@ var (
 	DefaultDevelopmentBranch string = "develop"
 	DefaultProductionBranch  string = "master"
 	DefaultVerbose           bool   = false
+	DefaultDryRun            bool   = false
 
 	config *AppConfig
 )
@@ -38,6 +39,7 @@ type AppConfig struct {
 	WorkspaceFilename string
 	WorkspacePath     string
 	Workspace         models.Workspace
+	DryRun            bool
 }
 
 func NewAppConfig() (*AppConfig, error) {

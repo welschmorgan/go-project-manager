@@ -41,6 +41,10 @@ func init() {
 	Command.PersistentFlags().BoolVarP(&config.Get().Verbose, "verbose", "v", config.Get().Verbose, "show additionnal log messages")
 	viper.BindPFlag("verbose", Command.PersistentFlags().Lookup("verbose"))
 
+	// dry run
+	Command.PersistentFlags().BoolVarP(&config.Get().DryRun, "dry-run", "n", config.Get().DryRun, "simulate commande execution, do not execute them")
+	viper.BindPFlag("dry-run", Command.PersistentFlags().Lookup("dry-run"))
+
 	// change working dir
 	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working-directory", "C", config.Get().WorkingDirectory, "change working directory")
 	viper.BindPFlag("working-directory", Command.PersistentFlags().Lookup("working-directory"))

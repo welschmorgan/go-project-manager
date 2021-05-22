@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/welschmorgan/go-project-manager/cmd/config"
 	"github.com/welschmorgan/go-project-manager/models"
 )
 
@@ -91,24 +92,36 @@ type VersionControlSoftware interface {
 func runCommand(name string, args ...string) ([]string, error, []string) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	cmd := exec.Command(name, args...)
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-	if err := cmd.Run(); err != nil {
-		return nil, err, strings.Split(stderr.String(), "\n")
+	if config.Get().Verbose {
+		argStr := ""
+		for _, a := range args {
+			if len(argStr) > 0 {
+				argStr += ", "
+			}
+			argStr += fmt.Sprintf("%q", a)
+		}
+		fmt.Printf("* exec: %s %s\n", name, argStr)
 	}
 	ret := []string{}
-	lines := map[string]bool{}
-	for line, err := stdout.ReadString('\n'); err == nil; line, err = stdout.ReadString('\n') {
-		line = strings.TrimSpace(line)
-		if ok := lines[line]; !ok {
-			lines[line] = true
-			ret = append(ret, line)
-		}
-	}
 	var errs []string
-	if len(strings.TrimSpace(stderr.String())) > 0 {
-		errs = strings.Split(strings.TrimSpace(stderr.String()), "\n")
+	if !config.Get().DryRun {
+		cmd := exec.Command(name, args...)
+		cmd.Stderr = &stderr
+		cmd.Stdout = &stdout
+		if err := cmd.Run(); err != nil {
+			return nil, err, strings.Split(stderr.String(), "\n")
+		}
+		lines := map[string]bool{}
+		for line, err := stdout.ReadString('\n'); err == nil; line, err = stdout.ReadString('\n') {
+			line = strings.TrimSpace(line)
+			if ok := lines[line]; !ok {
+				lines[line] = true
+				ret = append(ret, line)
+			}
+		}
+		if len(strings.TrimSpace(stderr.String())) > 0 {
+			errs = strings.Split(strings.TrimSpace(stderr.String()), "\n")
+		}
 	}
 	return ret, nil, errs
 }
