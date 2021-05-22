@@ -92,10 +92,10 @@ func initConfig() {
 	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {
 		panic(err.Error())
 	}
-	config.WorkspacePath = filepath.Join(config.WorkingDirectory, config.WorkspaceFilename)
-	if content, err := os.ReadFile(config.WorkspacePath); err != nil {
+	config.Get().WorkspacePath = filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
+	if content, err := os.ReadFile(config.Get().WorkspacePath); err != nil {
 		panic(err.Error())
-	} else if err = yaml.Unmarshal(content, &config.Workspace); err != nil {
+	} else if err = yaml.Unmarshal(content, &config.Get().Workspace); err != nil {
 		panic(err.Error())
 	}
 }

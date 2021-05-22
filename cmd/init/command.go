@@ -18,33 +18,33 @@ var Command = &cobra.Command{
 This will write '.grlm-workspace.yaml' and will interactively ask a few questions.
 `,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		if _, err := os.Stat(config.WorkspacePath); err == nil {
+		if _, err := os.Stat(config.Get().WorkspacePath); err == nil {
 			if ret, err := ui.AskYN("Workspace already initialized, do you want to reconfigure it"); err != nil {
 				return err
 			} else if !ret {
 				return errors.New("abort")
 			}
 		}
-		if err = askName(&config.Workspace); err != nil {
+		if err = askName(&config.Get().Workspace); err != nil {
 			return err
 		}
-		if err = askPath(&config.Workspace); err != nil {
+		if err = askPath(&config.Get().Workspace); err != nil {
 			return err
 		}
-		if err = askProjects(&config.Workspace); err != nil {
+		if err = askProjects(&config.Get().Workspace); err != nil {
 			return err
 		}
-		if err = askAuthor(&config.Workspace); err != nil {
+		if err = askAuthor(&config.Get().Workspace); err != nil {
 			return err
 		}
-		if err = askManager(&config.Workspace); err != nil {
+		if err = askManager(&config.Get().Workspace); err != nil {
 			return err
 		}
-		if err = askDeveloppers(&config.Workspace); err != nil {
+		if err = askDeveloppers(&config.Get().Workspace); err != nil {
 			return err
 		}
 
-		for _, proj := range config.Workspace.Projects {
+		for _, proj := range config.Get().Workspace.Projects {
 			if _, err := os.Stat(proj.Path); err != nil {
 				if os.IsNotExist(err) {
 					if ok, err := ui.AskYN(fmt.Sprintf("'%s' does not exist, create project folder", proj.Path)); err != nil {
@@ -57,13 +57,13 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 				}
 			}
 		}
-		if yaml, err := yaml.Marshal(&config.Workspace); err != nil {
+		if yaml, err := yaml.Marshal(&config.Get().Workspace); err != nil {
 			panic(err.Error())
 		} else {
-			if err := os.WriteFile(config.WorkspacePath, yaml, 0755); err != nil {
+			if err := os.WriteFile(config.Get().WorkspacePath, yaml, 0755); err != nil {
 				return err
 			}
-			fmt.Printf("Written '%s':\n%s\n", config.WorkspacePath, yaml)
+			fmt.Printf("Written '%s':\n%s\n", config.Get().WorkspacePath, yaml)
 		}
 		return nil
 	},

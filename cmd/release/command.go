@@ -12,7 +12,7 @@ var Command = &cobra.Command{
 	Short: "Release all projects included in this workspace",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		if _, err := os.Stat(config.WorkspacePath); err != nil && os.IsNotExist(err) {
+		if _, err = os.Stat(config.Get().WorkspacePath); err != nil && os.IsNotExist(err) {
 			panic("Workspace has not been initialized, run `grlm init`")
 		}
 		return nil
