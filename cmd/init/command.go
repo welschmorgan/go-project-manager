@@ -43,6 +43,20 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 		if err = askDeveloppers(&config.Workspace); err != nil {
 			return err
 		}
+
+		for _, proj := range config.Workspace.Projects {
+			if _, err := os.Stat(proj.Path); err != nil {
+				if os.IsNotExist(err) {
+					if ok, err := ui.AskYN(fmt.Sprintf("'%s' does not exist, create project folder", proj.Path)); err != nil {
+						return err
+					} else if ok {
+						if err = os.MkdirAll(proj.Path, 0755); err != nil {
+							return err
+						}
+					}
+				}
+			}
+		}
 		if yaml, err := yaml.Marshal(&config.Workspace); err != nil {
 			panic(err.Error())
 		} else {

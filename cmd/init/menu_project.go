@@ -22,7 +22,9 @@ func validateProject(k, v string) error {
 	case "Name":
 		return ui.StrMustBeNonEmpty(v)
 	case "Path":
-		return ui.StrMustBeNonEmpty(v)
+		if err := ui.StrMustBeNonEmpty(v); err != nil {
+			return err
+		}
 	case "Url":
 		return ui.StrMustBeNonEmpty(v)
 	case "SourceControl":
