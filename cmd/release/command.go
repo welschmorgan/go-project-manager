@@ -67,9 +67,12 @@ func release(p *models.Project) (err error) {
 		os.Exit(0)
 	}()
 
+	// stash modifications
 	if err = stashModifications(p, vc); err != nil {
 		return err
 	}
+
+	// checkout development and production branches
 	if err = checkoutAndPullBranch(p, vc, "master"); err != nil {
 		return err
 	}
@@ -79,7 +82,21 @@ func release(p *models.Project) (err error) {
 	if err = pullTags(p, vc); err != nil {
 		return err
 	}
+
+	// start release
 	if err = releaseStart(p, vc); err != nil {
+		return err
+	}
+
+	// wait for user to manually edit release
+
+	// TODO insert code
+
+	// finish release
+	if err = releaseFinish(p, vc); err != nil {
+		return err
+	}
+	if err = bumpVersion(p, vc); err != nil {
 		return err
 	}
 	return nil
@@ -118,5 +135,17 @@ func pullTags(p *models.Project, v vcs.VersionControlSoftware) error {
 	if err := v.Pull(vcs.PullOptions{All: false, Tags: true, Force: true}); err != nil {
 		return err
 	}
+	return nil
+}
+
+func releaseStart(p *models.Project, v vcs.VersionControlSoftware) error {
+	return nil
+}
+
+func releaseFinish(p *models.Project, v vcs.VersionControlSoftware) error {
+	return nil
+}
+
+func bumpVersion(p *models.Project, v vcs.VersionControlSoftware) error {
 	return nil
 }

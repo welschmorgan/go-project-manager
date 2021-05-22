@@ -16,10 +16,10 @@ func (s *Svn) Open(p string) error              { return errNotYetImpl }
 func (s *Svn) Clone(url, path string, options VersionControlOptions) error {
 	return errNotYetImpl
 }
-func (s *Svn) Status(options StatusOptions) ([]string, error) {
+func (s *Svn) Status(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }
-func (s *Svn) Stash(options StashOptions) ([]string, error) {
+func (s *Svn) Stash(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }
 func (s *Svn) Checkout(branch string, options VersionControlOptions) error { return errNotYetImpl }

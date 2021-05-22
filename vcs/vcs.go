@@ -70,6 +70,13 @@ type StashOptions struct {
 	Message          string
 }
 
+type BranchOptions struct {
+	VersionControlOptions
+	All           bool
+	Verbose       bool
+	SetUpstreamTo string
+}
+
 type VersionControlSoftware interface {
 	Name() string
 	Path() string
@@ -77,13 +84,14 @@ type VersionControlSoftware interface {
 	Detect(path string) (bool, error)
 	Open(path string) error
 	Clone(url, path string, options VersionControlOptions) error
-	Status(options StatusOptions) ([]string, error)
+	Status(options VersionControlOptions) ([]string, error)
+	Branch(options VersionControlOptions) ([]string, error)
 	Checkout(branch string, options VersionControlOptions) error
-	Pull(options PullOptions) error
-	Push(options PushOptions) error
+	Pull(options VersionControlOptions) error
+	Push(options VersionControlOptions) error
 	Tag(name, commit, message string, options VersionControlOptions) error
 	Merge(source, dest string, options VersionControlOptions) error
-	Stash(options StashOptions) ([]string, error)
+	Stash(options VersionControlOptions) ([]string, error)
 	Authors(options VersionControlOptions) ([]*models.Person, error)
 	Remotes(options VersionControlOptions) (map[string]string, error)
 }
