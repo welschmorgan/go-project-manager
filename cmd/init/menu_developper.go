@@ -10,10 +10,25 @@ type DevelopperMenu struct {
 	*ui.CRUDMenu
 }
 
+func validateDevelopper(k, v string) error {
+	switch k {
+	case "Name":
+		return ui.StrMustBeNonEmpty(v)
+	case "Email":
+		return ui.StrMustBeNonEmpty(v)
+	case "Phone":
+		return nil
+	}
+	return nil
+}
+
 func NewDevelopperMenu(workspace *models.Workspace) (*DevelopperMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
 		"Developpers", "Name", models.Person{},
+		[]ui.ObjValidator{
+			validateDevelopper,
+		},
 		[]ui.CRUDAction{ui.ActionQuit, ui.ActionAdd, ui.ActionEdit, ui.ActionRemove, ui.ActionClear},
 		map[uint8]string{
 			ui.ActionAdd.Id:    "Add new developper",

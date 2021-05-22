@@ -15,6 +15,7 @@ type CRUDMenu struct {
 	Key          string
 	SubKey       string
 	RefItem      interface{}
+	Validators   []ObjValidator
 	Actions      []CRUDAction
 	ActionLabels map[uint8]string
 	Items        []interface{}
@@ -22,12 +23,13 @@ type CRUDMenu struct {
 	Indices      map[string]int
 }
 
-func NewCRUDMenu(wksp *models.Workspace, key, subKey string, refItem interface{}, actions []CRUDAction, actionLabels map[uint8]string) (*CRUDMenu, error) {
+func NewCRUDMenu(wksp *models.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
 		Workspace:    wksp,
 		Key:          key,
 		SubKey:       subKey,
 		RefItem:      refItem,
+		Validators:   validators,
 		Actions:      actions,
 		ActionLabels: actionLabels,
 		Items:        []interface{}{},
@@ -151,11 +153,9 @@ func (m *CRUDMenu) Render() error {
 	wrv := reflect.Indirect(reflect.ValueOf(m.Workspace))
 	wrf := wrv.FieldByName(m.Key)
 	mrv := reflect.Indirect(reflect.ValueOf(m.Items))
-	fmt.Printf("MakeSlice: len = %d, cap = %d\n", len(m.Items), cap(m.Items))
 	wrf.Set(reflect.MakeSlice(wrf.Type(), len(m.Items), cap(m.Items)))
 	refType := reflect.TypeOf(m.RefItem)
 	for i := 0; i < wrf.Len(); i++ {
-		fmt.Printf("update workspace.item%d = %+v\n", i, mrv.Index(i).Interface())
 		itemRT := refType
 		if itemRT.Kind() == reflect.Ptr {
 			itemRT = itemRT.Elem()
@@ -164,7 +164,11 @@ func (m *CRUDMenu) Render() error {
 		itemRV := mrv.Index(i)
 		for j := 0; j < itemRT.NumField(); j++ {
 			fv := itemRV.Elem().Field(j)
-			fmt.Printf("\t+ update field %d - %s(%v)\n", j, fv.Type().Name(), fv.String())
+			for _, v := range m.Validators {
+				if err := v(fv.Type().Name(), fv.String()); err != nil {
+					return err
+				}
+			}
 			nfv := reflect.Indirect(newItem.Elem().Field(j))
 			nfv.Set(fv)
 		}
@@ -193,7 +197,7 @@ func (m *CRUDMenu) RenderOnce() error {
 		defaultProject = m.Get(project)
 	}
 	if action == ActionEdit || action == ActionAdd {
-		if res, err := AskObject(m.ActionLabels[action.Id], defaultProject, nil); err != nil {
+		if res, err := AskObject(m.ActionLabels[action.Id], defaultProject, m.Validators...); err != nil {
 			return err
 		} else if action == ActionEdit {
 			rv := reflect.Indirect(reflect.ValueOf(defaultProject))

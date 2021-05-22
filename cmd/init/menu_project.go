@@ -1,6 +1,7 @@
 package init
 
 import (
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -16,10 +17,40 @@ type ProjectMenu struct {
 	*ui.CRUDMenu
 }
 
+func validateProject(k, v string) error {
+	switch k {
+	case "Name":
+		return ui.StrMustBeNonEmpty(v)
+	case "Path":
+		return ui.StrMustBeNonEmpty(v)
+	case "Url":
+		return ui.StrMustBeNonEmpty(v)
+	case "SourceControl":
+		if err := ui.StrMustBeNonEmpty(v); err != nil {
+			return err
+		}
+		ok := false
+		names := []string{}
+		for _, s := range vcs.All {
+			names = append(names, s.Name())
+			if s.Name() == v {
+				ok = true
+			}
+		}
+		if !ok {
+			return fmt.Errorf("unknown vcs '%s', allowed: [%v]", v, names)
+		}
+	}
+	return nil
+}
+
 func NewProjectMenu(workspace *models.Workspace) (*ProjectMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
 		"Projects", "Name", &models.Project{},
+		[]ui.ObjValidator{
+			validateProject,
+		},
 		[]ui.CRUDAction{ui.ActionQuit, ui.ActionAdd, ui.ActionEdit, ui.ActionRemove, ui.ActionClear},
 		map[uint8]string{
 			ui.ActionAdd.Id:    "Add new project",

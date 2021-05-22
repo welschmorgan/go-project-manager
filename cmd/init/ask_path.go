@@ -17,7 +17,7 @@ func askPath(wksp *models.Workspace) error {
 		}
 		wksp.Path = dir
 	}
-	if wksp.Path, err = ui.Ask("Path", wksp.Path, strMustBeNonEmpty, strMustNotContainOnlySpaces, pathMustBeDir); err != nil {
+	if wksp.Path, err = ui.Ask("Path", wksp.Path, ui.StrMustBeNonEmpty, ui.StrMustNotContainOnlySpaces, ui.PathMustBeDir); err != nil {
 		return err
 	}
 	return nil

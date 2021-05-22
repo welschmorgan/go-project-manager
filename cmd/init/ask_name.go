@@ -18,7 +18,7 @@ func askName(wksp *models.Workspace) error {
 		}
 		wksp.Name = path.Base(dir)
 	}
-	if wksp.Name, err = ui.Ask("Name", wksp.Name, strMustNotContainOnlySpaces); err != nil {
+	if wksp.Name, err = ui.Ask("Name", wksp.Name, ui.StrMustNotContainOnlySpaces); err != nil {
 		return err
 	}
 	return nil
