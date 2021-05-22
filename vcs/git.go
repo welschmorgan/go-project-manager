@@ -41,6 +41,67 @@ func (g *Git) Open(p string) error {
 	}
 	return nil
 }
+
+func (g *Git) Status(options StatusOptions) ([]string, error) {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	var opts StatusOptions
+	if ret, err := getOptions(options, StatusOptions{
+		Short: true,
+	}); err != nil {
+		return nil, err
+	} else {
+		opts = ret.(StatusOptions)
+	}
+	args := []string{}
+	args = append(args, "status")
+	if opts.Short {
+		args = append(args, "--short")
+	}
+	out, err, errTxt := runCommand("git", args...)
+	if len(errTxt) > 0 {
+		if len(errTxt) == 1 {
+			fmt.Fprintf(os.Stderr, "error: %v", errTxt[0])
+		} else {
+			fmt.Fprintf(os.Stderr, "%d error(s): %v", len(errTxt), errTxt)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (g *Git) Stash(options StashOptions) ([]string, error) {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	var opts StashOptions
+	if ret, err := getOptions(options, StashOptions{
+		IncludeUntracked: true,
+	}); err != nil {
+		return nil, err
+	} else {
+		opts = ret.(StashOptions)
+	}
+	args := []string{}
+	args = append(args, "stash")
+	if opts.IncludeUntracked {
+		args = append(args, "-u")
+	}
+	out, err, errTxt := runCommand("git", args...)
+	if len(errTxt) > 0 {
+		if len(errTxt) == 1 {
+			fmt.Fprintf(os.Stderr, "error: %v", errTxt[0])
+		} else {
+			fmt.Fprintf(os.Stderr, "%d error(s): %v", len(errTxt), errTxt)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (g *Git) Clone(url, path string, options VersionControlOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
@@ -64,7 +125,7 @@ func (g *Git) Clone(url, path string, options VersionControlOptions) error {
 	_, err, _ := runCommand("git", args...)
 	return err
 }
-func (g *Git) Checkout(branch string, options VersionControlOptions) error {
+func (g *Git) Checkout(branch string, options CheckoutOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts CheckoutOptions
@@ -85,7 +146,7 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 	_, err, _ := runCommand("git", args...)
 	return err
 }
-func (g *Git) Pull(options VersionControlOptions) error {
+func (g *Git) Pull(options PullOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts PullOptions
@@ -106,10 +167,13 @@ func (g *Git) Pull(options VersionControlOptions) error {
 	if opts.All {
 		args = append(args, "--all")
 	}
+	if opts.Tags {
+		args = append(args, "--tags")
+	}
 	_, err, _ := runCommand("git", args...)
 	return err
 }
-func (g *Git) Push(options VersionControlOptions) error {
+func (g *Git) Push(options PullOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts PullOptions

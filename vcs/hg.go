@@ -16,6 +16,12 @@ func (h *Hg) Open(p string) error              { return errNotYetImpl }
 func (h *Hg) Clone(url, path string, options VersionControlOptions) error {
 	return errNotYetImpl
 }
+func (h *Hg) Status(options StatusOptions) ([]string, error) {
+	return nil, errNotYetImpl
+}
+func (h *Hg) Stash(options StashOptions) ([]string, error) {
+	return nil, errNotYetImpl
+}
 func (h *Hg) Checkout(branch string, options VersionControlOptions) error { return errNotYetImpl }
 func (h *Hg) Pull(options VersionControlOptions) error                    { return errNotYetImpl }
 func (h *Hg) Push(options VersionControlOptions) error                    { return errNotYetImpl }

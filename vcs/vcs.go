@@ -43,6 +43,7 @@ type PullOptions struct {
 	VersionControlOptions
 	Force bool
 	All   bool
+	Tags  bool
 }
 
 type PushOptions struct {
@@ -57,6 +58,17 @@ type MergeOptions struct {
 	FastForwardOnly bool
 }
 
+type StatusOptions struct {
+	VersionControlOptions
+	Short bool
+}
+
+type StashOptions struct {
+	VersionControlOptions
+	IncludeUntracked bool
+	Message          string
+}
+
 type VersionControlSoftware interface {
 	Name() string
 	Path() string
@@ -64,11 +76,13 @@ type VersionControlSoftware interface {
 	Detect(path string) (bool, error)
 	Open(path string) error
 	Clone(url, path string, options VersionControlOptions) error
+	Status(options StatusOptions) ([]string, error)
 	Checkout(branch string, options VersionControlOptions) error
-	Pull(options VersionControlOptions) error
-	Push(options VersionControlOptions) error
+	Pull(options PullOptions) error
+	Push(options PushOptions) error
 	Tag(name, commit, message string, options VersionControlOptions) error
 	Merge(source, dest string, options VersionControlOptions) error
+	Stash(options StashOptions) ([]string, error)
 	Authors(options VersionControlOptions) ([]*models.Person, error)
 	Remotes(options VersionControlOptions) (map[string]string, error)
 }
@@ -92,7 +106,11 @@ func runCommand(name string, args ...string) ([]string, error, []string) {
 			ret = append(ret, line)
 		}
 	}
-	return ret, nil, strings.Split(stderr.String(), "\n")
+	var errs []string
+	if len(strings.TrimSpace(stderr.String())) > 0 {
+		errs = strings.Split(strings.TrimSpace(stderr.String()), "\n")
+	}
+	return ret, nil, errs
 }
 
 var All = []VersionControlSoftware{
