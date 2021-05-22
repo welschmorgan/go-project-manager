@@ -3,6 +3,8 @@ package release
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-project-manager/cmd/config"
@@ -54,6 +56,17 @@ func release(p *models.Project) (err error) {
 	if vc, err = vcs.Open(p.Path); err != nil {
 		return err
 	}
+	// cleanup release on ctrl-c
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		if err := abortRelease(p, vc); err != nil {
+			panic(err.Error())
+		}
+		os.Exit(0)
+	}()
+
 	if err = stashModifications(p, vc); err != nil {
 		return err
 	}
@@ -69,6 +82,11 @@ func release(p *models.Project) (err error) {
 	if err = releaseStart(p, vc); err != nil {
 		return err
 	}
+	return nil
+}
+
+func abortRelease(p *models.Project, v vcs.VersionControlSoftware) error {
+	println("aborting release ...")
 	return nil
 }
 
