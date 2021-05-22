@@ -38,6 +38,7 @@ type CheckoutOptions struct {
 	VersionControlOptions
 	CreateBranch     bool
 	UpdateIfExisting bool
+	StartingPoint    string
 }
 
 type PullOptions struct {
@@ -83,6 +84,13 @@ type ListTagsOptions struct {
 	SortByCommitterDate bool
 }
 
+type TagOptions struct {
+	VersionControlOptions
+	Annotated bool
+	Message   string
+	Commit    string
+}
+
 type VersionControlSoftware interface {
 	// Retrieve the name of this vcs
 	Name() string
@@ -115,7 +123,7 @@ type VersionControlSoftware interface {
 	Push(options VersionControlOptions) error
 
 	// Create a new tag
-	Tag(name, commit, message string, options VersionControlOptions) error
+	Tag(name string, options VersionControlOptions) error
 
 	// Merge source into dest branch
 	Merge(source, dest string, options VersionControlOptions) error

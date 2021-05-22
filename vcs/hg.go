@@ -25,7 +25,7 @@ func (h *Hg) Stash(options VersionControlOptions) ([]string, error) {
 func (h *Hg) Checkout(branch string, options VersionControlOptions) error { return errNotYetImpl }
 func (h *Hg) Pull(options VersionControlOptions) error                    { return errNotYetImpl }
 func (h *Hg) Push(options VersionControlOptions) error                    { return errNotYetImpl }
-func (h *Hg) Tag(name, commit, message string, options VersionControlOptions) error {
+func (h *Hg) Tag(name string, options VersionControlOptions) error {
 	return errNotYetImpl
 }
 func (h *Hg) Merge(source, dest string, options VersionControlOptions) error { return errNotYetImpl }

@@ -59,11 +59,9 @@ func Open(p string) (ProjectAccessor, error) {
 		return nil, err
 	} else {
 		ret := instanciate(a)
-		fmt.Printf("%+v\n", ret)
 		if err = ret.Open(p); err != nil {
 			return nil, err
 		}
-		fmt.Printf("%+v\n", ret)
 		return ret, nil
 	}
 }

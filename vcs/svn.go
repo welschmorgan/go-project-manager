@@ -25,7 +25,7 @@ func (s *Svn) Stash(options VersionControlOptions) ([]string, error) {
 func (s *Svn) Checkout(branch string, options VersionControlOptions) error { return errNotYetImpl }
 func (s *Svn) Pull(options VersionControlOptions) error                    { return errNotYetImpl }
 func (s *Svn) Push(options VersionControlOptions) error                    { return errNotYetImpl }
-func (s *Svn) Tag(name, commit, message string, options VersionControlOptions) error {
+func (s *Svn) Tag(name string, options VersionControlOptions) error {
 	return errNotYetImpl
 }
 func (s *Svn) Merge(source, dest string, options VersionControlOptions) error { return errNotYetImpl }

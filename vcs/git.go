@@ -1,6 +1,7 @@
 package vcs
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -174,6 +175,7 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 	if ret, err := getOptions(options, CheckoutOptions{
 		CreateBranch:     false,
 		UpdateIfExisting: false,
+		StartingPoint:    "",
 	}); err != nil {
 		return err
 	} else {
@@ -190,6 +192,9 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 		}
 	}
 	args = append(args, branch)
+	if len(strings.TrimSpace(opts.StartingPoint)) > 0 {
+		args = append(args, strings.TrimSpace(opts.StartingPoint))
+	}
 	_, _, err := runCommand("git", args...)
 	return err
 }
@@ -244,12 +249,37 @@ func (g *Git) Push(options VersionControlOptions) error {
 	_, _, err := runCommand("git", args...)
 	return err
 }
-func (g *Git) Tag(name, commit, message string, options VersionControlOptions) error {
+
+func (g *Git) Tag(name string, options VersionControlOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
-	_, _, err := runCommand("git", "--config", "http.sslVerify=false", "tag", "-a", name, "-m", message, commit)
+	var opts TagOptions
+	if ret, err := getOptions(options, TagOptions{
+		Annotated: false,
+		Message:   "",
+		Commit:    "",
+	}); err != nil {
+		return err
+	} else {
+		opts = ret.(TagOptions)
+	}
+	args := []string{
+		"tag",
+	}
+	if opts.Annotated {
+		args = append(args, "-a")
+	}
+	args = append(args, name)
+	if len(strings.TrimSpace(opts.Message)) > 0 {
+		args = append(args, "-m", opts.Message)
+	}
+	if len(strings.TrimSpace(opts.Commit)) > 0 {
+		args = append(args, opts.Commit)
+	}
+	_, _, err := runCommand("git", args...)
 	return err
 }
+
 func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
@@ -264,6 +294,9 @@ func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
 	}
 	args := []string{
 		"merge",
+	}
+	if opts.FastForwardOnly && opts.NoFastForward {
+		return errors.New("--ff-only and --no-ff are mutually exclusive, please pick one")
 	}
 	if opts.FastForwardOnly {
 		args = append(args, "--ff-only")
