@@ -3,12 +3,15 @@ package root
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/welschmorgan/go-project-manager/cmd/config"
 	initCommand "github.com/welschmorgan/go-project-manager/cmd/init"
+	releaseCommand "github.com/welschmorgan/go-project-manager/cmd/release"
+	"gopkg.in/yaml.v2"
 )
 
 var Command = &cobra.Command{
@@ -48,6 +51,7 @@ func init() {
 
 	// Command.ActionAddCommand(addCmd)
 	Command.AddCommand(initCommand.Command)
+	Command.AddCommand(releaseCommand.Command)
 }
 
 func initConfig() {
@@ -86,6 +90,12 @@ func initConfig() {
 		}
 	}
 	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {
+		panic(err.Error())
+	}
+	config.WorkspacePath = filepath.Join(config.WorkingDirectory, config.WorkspaceFilename)
+	if content, err := os.ReadFile(config.WorkspacePath); err != nil {
+		panic(err.Error())
+	} else if err = yaml.Unmarshal(content, &config.Workspace); err != nil {
 		panic(err.Error())
 	}
 }

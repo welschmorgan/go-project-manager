@@ -4,11 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-project-manager/cmd/config"
-	"github.com/welschmorgan/go-project-manager/models"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"gopkg.in/yaml.v2"
 )
@@ -20,45 +18,38 @@ var Command = &cobra.Command{
 This will write '.grlm-workspace.yaml' and will interactively ask a few questions.
 `,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		wksp := models.Workspace{}
-		path := filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
-		if _, err := os.Stat(path); err == nil {
+		if _, err := os.Stat(config.WorkspacePath); err == nil {
 			if ret, err := ui.AskYN("Workspace already initialized, do you want to reconfigure it"); err != nil {
 				return err
 			} else if !ret {
 				return errors.New("abort")
 			}
-			if content, err := os.ReadFile(path); err != nil {
-				return err
-			} else if err = yaml.Unmarshal(content, &wksp); err != nil {
-				return err
-			}
 		}
-		if err = askName(&wksp); err != nil {
+		if err = askName(&config.Workspace); err != nil {
 			return err
 		}
-		if err = askPath(&wksp); err != nil {
+		if err = askPath(&config.Workspace); err != nil {
 			return err
 		}
-		if err = askProjects(&wksp); err != nil {
+		if err = askProjects(&config.Workspace); err != nil {
 			return err
 		}
-		if err = askAuthor(&wksp); err != nil {
+		if err = askAuthor(&config.Workspace); err != nil {
 			return err
 		}
-		if err = askManager(&wksp); err != nil {
+		if err = askManager(&config.Workspace); err != nil {
 			return err
 		}
-		if err = askDeveloppers(&wksp); err != nil {
+		if err = askDeveloppers(&config.Workspace); err != nil {
 			return err
 		}
-		if yaml, err := yaml.Marshal(&wksp); err != nil {
+		if yaml, err := yaml.Marshal(&config.Workspace); err != nil {
 			panic(err.Error())
 		} else {
-			if err := os.WriteFile(path, yaml, 0755); err != nil {
+			if err := os.WriteFile(config.WorkspacePath, yaml, 0755); err != nil {
 				return err
 			}
-			fmt.Printf("Written '%s':\n%s\n", path, yaml)
+			fmt.Printf("Written '%s':\n%s\n", config.WorkspacePath, yaml)
 		}
 		return nil
 	},

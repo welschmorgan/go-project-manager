@@ -1,6 +1,10 @@
 package config
 
-import "os"
+import (
+	"os"
+
+	"github.com/welschmorgan/go-project-manager/models"
+)
 
 var (
 	// Used for flags.
@@ -32,6 +36,8 @@ type AppConfig struct {
 	CfgFile           string
 	WorkingDirectory  string
 	WorkspaceFilename string
+	WorkspacePath     string
+	Workspace         models.Workspace
 }
 
 func NewAppConfig() (*AppConfig, error) {
