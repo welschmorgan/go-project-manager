@@ -67,6 +67,10 @@ type StatusOptions struct {
 
 type StashOptions struct {
 	VersionControlOptions
+	Save             bool
+	List             bool
+	Apply            bool
+	Pop              bool
 	IncludeUntracked bool
 	Message          string
 }
@@ -86,11 +90,17 @@ type ListTagsOptions struct {
 
 type TagOptions struct {
 	VersionControlOptions
+	Delete    bool
 	Annotated bool
 	Message   string
 	Commit    string
 }
 
+type ResetOptions struct {
+	VersionControlOptions
+	Hard   bool
+	Commit string
+}
 type VersionControlSoftware interface {
 	// Retrieve the name of this vcs
 	Name() string
@@ -119,6 +129,9 @@ type VersionControlSoftware interface {
 	// Checkout a specific branch
 	Checkout(branch string, options VersionControlOptions) error
 
+	// Reset a branch to a specific commit
+	Reset(options VersionControlOptions) error
+
 	// Pull sources from remote repository
 	Pull(options VersionControlOptions) error
 
@@ -133,6 +146,9 @@ type VersionControlSoftware interface {
 
 	// Create a new stash from the working tree
 	Stash(options VersionControlOptions) ([]string, error)
+
+	// Delete repository branch
+	DeleteBranch(name string, options VersionControlOptions) error
 
 	// List repository branches
 	ListBranches(options VersionControlOptions) ([]string, error)

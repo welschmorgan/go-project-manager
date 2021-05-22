@@ -73,7 +73,7 @@ func (g *Git) Open(p string) error {
 					"fake-for-dry-run": "http://fake.com",
 				}
 			} else {
-				return fmt.Errorf("no remotes configured for '%s'", filepath.Base(g.path))
+				fmt.Fprintf(os.Stderr, "[\033[1;31m-\033[0m] no remotes configured for '%s'\n", filepath.Base(g.path))
 			}
 		}
 		g.url = ""
@@ -120,6 +120,7 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 	defer fs.Popd()
 	var opts StashOptions
 	if ret, err := getOptions(options, StashOptions{
+		Save:             true,
 		IncludeUntracked: true,
 	}); err != nil {
 		return nil, err
@@ -128,7 +129,15 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 	}
 	args := []string{}
 	args = append(args, "stash")
-	if opts.IncludeUntracked {
+	if opts.Save {
+		args = append(args, "save")
+	} else if opts.List {
+		args = append(args, "list")
+	} else if opts.Apply {
+		args = append(args, "apply")
+	} else if opts.Pop {
+		args = append(args, "pop")
+	} else if opts.IncludeUntracked {
 		args = append(args, "-u")
 	}
 	if len(strings.TrimSpace(opts.Message)) > 0 {
@@ -146,6 +155,16 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (g *Git) DeleteBranch(name string, options VersionControlOptions) error {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	args := []string{
+		"branch", "-D",
+	}
+	_, _, err := runCommand("git", args...)
+	return err
 }
 
 func (g *Git) Clone(url, path string, options VersionControlOptions) error {
@@ -201,6 +220,32 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 	_, _, err := runCommand("git", args...)
 	return err
 }
+
+func (g *Git) Reset(options VersionControlOptions) error {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	var opts ResetOptions
+	if ret, err := getOptions(options, ResetOptions{
+		Hard:   false,
+		Commit: "",
+	}); err != nil {
+		return err
+	} else {
+		opts = ret.(ResetOptions)
+	}
+	args := []string{
+		"reset",
+	}
+	if opts.Hard {
+		args = append(args, "--hard")
+	}
+	if len(strings.TrimSpace(opts.Commit)) > 0 {
+		args = append(args, strings.TrimSpace(opts.Commit))
+	}
+	_, _, err := runCommand("git", args...)
+	return err
+}
+
 func (g *Git) Pull(options VersionControlOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
@@ -258,6 +303,7 @@ func (g *Git) Tag(name string, options VersionControlOptions) error {
 	defer fs.Popd()
 	var opts TagOptions
 	if ret, err := getOptions(options, TagOptions{
+		Delete:    false,
 		Annotated: false,
 		Message:   "",
 		Commit:    "",
@@ -271,6 +317,8 @@ func (g *Git) Tag(name string, options VersionControlOptions) error {
 	}
 	if opts.Annotated {
 		args = append(args, "-a")
+	} else if opts.Delete {
+		args = append(args, "-d")
 	}
 	args = append(args, name)
 	if len(strings.TrimSpace(opts.Message)) > 0 {

@@ -35,6 +35,12 @@ func (s *Svn) ListAuthors(options VersionControlOptions) ([]*config.Person, erro
 func (s *Svn) CurrentBranch() (string, error) {
 	return "", errNotYetImpl
 }
+func (s *Svn) DeleteBranch(name string, options VersionControlOptions) error {
+	return errNotYetImpl
+}
+func (s *Svn) Reset(options VersionControlOptions) error {
+	return errNotYetImpl
+}
 func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }
