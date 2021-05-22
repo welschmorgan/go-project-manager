@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/welschmorgan/go-project-manager/cmd"
+	"github.com/welschmorgan/go-release-manager/cmd"
 )
 
 func main() {

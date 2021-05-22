@@ -1,4 +1,4 @@
-module github.com/welschmorgan/go-project-manager
+module github.com/welschmorgan/go-release-manager
 
 go 1.16
 

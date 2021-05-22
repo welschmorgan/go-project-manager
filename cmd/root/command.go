@@ -9,9 +9,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	initCommand "github.com/welschmorgan/go-project-manager/cmd/init"
-	releaseCommand "github.com/welschmorgan/go-project-manager/cmd/release"
-	"github.com/welschmorgan/go-project-manager/config"
+	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
+	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
+	"github.com/welschmorgan/go-release-manager/config"
 	"gopkg.in/yaml.v2"
 )
 

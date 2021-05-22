@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/config"
-	"github.com/welschmorgan/go-project-manager/ui"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/ui"
 )
 
 func askPath(wksp *config.Workspace) error {

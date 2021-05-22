@@ -1,6 +1,6 @@
 package init
 
-import "github.com/welschmorgan/go-project-manager/config"
+import "github.com/welschmorgan/go-release-manager/config"
 
 func askDeveloppers(wksp *config.Workspace) error {
 	var err error

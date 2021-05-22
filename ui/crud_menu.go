@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/welschmorgan/go-project-manager/config"
+	"github.com/welschmorgan/go-release-manager/config"
 )
 
 var errMenuQuit = errors.New("user quit")

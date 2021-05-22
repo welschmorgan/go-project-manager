@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/welschmorgan/go-project-manager/config"
+	"github.com/welschmorgan/go-release-manager/config"
 )
 
 func AskPerson(label string, defaults *config.Person, validators ...ObjValidator) (*config.Person, error) {

@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/config"
-	"github.com/welschmorgan/go-project-manager/fs"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 )
 
 type Git struct {

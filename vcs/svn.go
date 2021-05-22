@@ -1,6 +1,6 @@
 package vcs
 
-import "github.com/welschmorgan/go-project-manager/config"
+import "github.com/welschmorgan/go-release-manager/config"
 
 type Svn struct {
 	VersionControlSoftware

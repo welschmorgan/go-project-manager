@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/config"
+	"github.com/welschmorgan/go-release-manager/config"
 )
 
 var (
