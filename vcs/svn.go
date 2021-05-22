@@ -1,6 +1,6 @@
 package vcs
 
-import "github.com/welschmorgan/go-project-manager/models"
+import "github.com/welschmorgan/go-project-manager/config"
 
 type Svn struct {
 	VersionControlSoftware
@@ -29,6 +29,6 @@ func (s *Svn) Tag(name, commit, message string, options VersionControlOptions) e
 	return errNotYetImpl
 }
 func (s *Svn) Merge(source, dest string, options VersionControlOptions) error { return errNotYetImpl }
-func (s *Svn) Authors(options VersionControlOptions) ([]*models.Person, error) {
+func (s *Svn) Authors(options VersionControlOptions) ([]*config.Person, error) {
 	return nil, errNotYetImpl
 }

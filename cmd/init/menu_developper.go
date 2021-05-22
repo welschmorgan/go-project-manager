@@ -1,7 +1,7 @@
 package init
 
 import (
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"github.com/welschmorgan/go-project-manager/vcs"
 )
@@ -22,10 +22,10 @@ func validateDevelopper(k, v string) error {
 	return nil
 }
 
-func NewDevelopperMenu(workspace *models.Workspace) (*DevelopperMenu, error) {
+func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
-		"Developpers", "Name", models.Person{},
+		"Developpers", "Name", config.Person{},
 		[]ui.ObjValidator{
 			validateDevelopper,
 		},

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 )
 
 var errMenuQuit = errors.New("user quit")
 
 type CRUDMenu struct {
-	Workspace    *models.Workspace
+	Workspace    *config.Workspace
 	Key          string
 	SubKey       string
 	RefItem      interface{}
@@ -23,7 +23,7 @@ type CRUDMenu struct {
 	Indices      map[string]int
 }
 
-func NewCRUDMenu(wksp *models.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string) (*CRUDMenu, error) {
+func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
 		Workspace:    wksp,
 		Key:          key,

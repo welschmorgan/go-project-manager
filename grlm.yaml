@@ -1,5 +1,5 @@
 workspaces_root: $HOME/development
-release:
-  branche_names: 
-    production: master
-    development: develop
+branche_names: 
+  production: master
+  development: develop
+  release: release/$VERSION

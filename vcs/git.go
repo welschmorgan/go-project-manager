@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/fs"
-	"github.com/welschmorgan/go-project-manager/models"
 )
 
 type Git struct {
@@ -47,7 +47,7 @@ func (g *Git) Branch(options VersionControlOptions) ([]string, error) {
 	if len(opts.SetUpstreamTo) > 0 {
 		args = append(args, "--set-upstream-to", opts.SetUpstreamTo)
 	}
-	out, err, errTxt := runCommand("git", args...)
+	out, errTxt, err := runCommand("git", args...)
 	if len(errTxt) > 0 {
 		if len(errTxt) == 1 {
 			fmt.Fprintf(os.Stderr, "error: %v", errTxt[0])
@@ -65,9 +65,16 @@ func (g *Git) Open(p string) error {
 	g.path = p
 	if remotes, err := g.Remotes(nil); err != nil {
 		return err
-	} else if len(remotes) == 0 {
-		return fmt.Errorf("no remotes configured for '%s'", filepath.Base(g.path))
 	} else {
+		if len(remotes) == 0 {
+			if config.Get().DryRun {
+				remotes = map[string]string{
+					"fake-for-dry-run": "http://fake.com",
+				}
+			} else {
+				return fmt.Errorf("no remotes configured for '%s'", filepath.Base(g.path))
+			}
+		}
 		g.url = ""
 		for _, r := range remotes {
 			g.url = r
@@ -93,7 +100,7 @@ func (g *Git) Status(options VersionControlOptions) ([]string, error) {
 	if opts.Short {
 		args = append(args, "--short")
 	}
-	out, err, errTxt := runCommand("git", args...)
+	out, errTxt, err := runCommand("git", args...)
 	if len(errTxt) > 0 {
 		if len(errTxt) == 1 {
 			fmt.Fprintf(os.Stderr, "error: %v", errTxt[0])
@@ -123,7 +130,7 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 	if opts.IncludeUntracked {
 		args = append(args, "-u")
 	}
-	out, err, errTxt := runCommand("git", args...)
+	out, errTxt, err := runCommand("git", args...)
 	if len(errTxt) > 0 {
 		if len(errTxt) == 1 {
 			fmt.Fprintf(os.Stderr, "error: %v", errTxt[0])
@@ -157,7 +164,7 @@ func (g *Git) Clone(url, path string, options VersionControlOptions) error {
 	if len(strings.TrimSpace(opts.Branch)) > 0 {
 		args = append(args, "--branch", opts.Branch)
 	}
-	_, err, _ := runCommand("git", args...)
+	_, _, err := runCommand("git", args...)
 	return err
 }
 func (g *Git) Checkout(branch string, options VersionControlOptions) error {
@@ -165,7 +172,8 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 	defer fs.Popd()
 	var opts CheckoutOptions
 	if ret, err := getOptions(options, CheckoutOptions{
-		CreateBranch: false,
+		CreateBranch:     false,
+		UpdateIfExisting: false,
 	}); err != nil {
 		return err
 	} else {
@@ -175,10 +183,14 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 		"checkout",
 	}
 	if opts.CreateBranch {
-		args = append(args, "-b")
+		if opts.UpdateIfExisting {
+			args = append(args, "-B")
+		} else {
+			args = append(args, "-b")
+		}
 	}
 	args = append(args, branch)
-	_, err, _ := runCommand("git", args...)
+	_, _, err := runCommand("git", args...)
 	return err
 }
 func (g *Git) Pull(options VersionControlOptions) error {
@@ -205,7 +217,7 @@ func (g *Git) Pull(options VersionControlOptions) error {
 	if opts.Tags {
 		args = append(args, "--tags")
 	}
-	_, err, _ := runCommand("git", args...)
+	_, _, err := runCommand("git", args...)
 	return err
 }
 func (g *Git) Push(options VersionControlOptions) error {
@@ -229,13 +241,13 @@ func (g *Git) Push(options VersionControlOptions) error {
 	if opts.All {
 		args = append(args, "--force")
 	}
-	_, err, _ := runCommand("git", args...)
+	_, _, err := runCommand("git", args...)
 	return err
 }
 func (g *Git) Tag(name, commit, message string, options VersionControlOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
-	_, err, _ := runCommand("git", "--config", "http.sslVerify=false", "tag", "-a", name, "-m", message, commit)
+	_, _, err := runCommand("git", "--config", "http.sslVerify=false", "tag", "-a", name, "-m", message, commit)
 	return err
 }
 func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
@@ -263,23 +275,23 @@ func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
 	if err := g.Checkout(dest, nil); err != nil {
 		return err
 	}
-	_, err, _ := runCommand("git", args...)
+	_, _, err := runCommand("git", args...)
 	return err
 }
-func (g *Git) Authors(options VersionControlOptions) ([]*models.Person, error) {
+func (g *Git) Authors(options VersionControlOptions) ([]*config.Person, error) {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var lines []string
 	var err error
-	if lines, err, _ = runCommand("git", "log", "--format=%cn <%ce>"); err != nil {
+	if lines, _, err = runCommand("git", "log", "--format=%cn <%ce>"); err != nil {
 		return nil, err
 	}
-	ret := []*models.Person{}
+	ret := []*config.Person{}
 	for _, line := range lines {
 		rule := regexp.MustCompile("(.*)<(.*?)>")
 		matches := rule.FindAllStringSubmatch(line, -1)
 		for _, match := range matches {
-			ret = append(ret, models.NewPerson(strings.TrimSpace(match[1]), strings.TrimSpace(match[2]), ""))
+			ret = append(ret, config.NewPerson(strings.TrimSpace(match[1]), strings.TrimSpace(match[2]), ""))
 		}
 	}
 	return ret, nil
@@ -290,7 +302,7 @@ func (g *Git) Remotes(options VersionControlOptions) (map[string]string, error) 
 	defer fs.Popd()
 	var lines []string
 	var err error
-	if lines, err, _ = runCommand("git", "remote", "-v"); err != nil {
+	if lines, _, err = runCommand("git", "remote", "-v"); err != nil {
 		return nil, err
 	}
 	ret := map[string]string{}

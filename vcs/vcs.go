@@ -9,8 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/cmd/config"
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 )
 
 var (
@@ -37,7 +36,8 @@ type CloneOptions struct {
 }
 type CheckoutOptions struct {
 	VersionControlOptions
-	CreateBranch bool
+	CreateBranch     bool
+	UpdateIfExisting bool
 }
 
 type PullOptions struct {
@@ -92,12 +92,12 @@ type VersionControlSoftware interface {
 	Tag(name, commit, message string, options VersionControlOptions) error
 	Merge(source, dest string, options VersionControlOptions) error
 	Stash(options VersionControlOptions) ([]string, error)
-	Authors(options VersionControlOptions) ([]*models.Person, error)
+	Authors(options VersionControlOptions) ([]*config.Person, error)
 	Remotes(options VersionControlOptions) (map[string]string, error)
 }
 
 // Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
-func runCommand(name string, args ...string) ([]string, error, []string) {
+func runCommand(name string, args ...string) ([]string, []string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	if config.Get().Verbose {
@@ -108,7 +108,7 @@ func runCommand(name string, args ...string) ([]string, error, []string) {
 			}
 			argStr += fmt.Sprintf("%q", a)
 		}
-		fmt.Printf("* exec: %s %s\n", name, argStr)
+		fmt.Printf("* exec: %q %s\n", name, argStr)
 	}
 	ret := []string{}
 	var errs []string
@@ -117,7 +117,7 @@ func runCommand(name string, args ...string) ([]string, error, []string) {
 		cmd.Stderr = &stderr
 		cmd.Stdout = &stdout
 		if err := cmd.Run(); err != nil {
-			return nil, err, strings.Split(stderr.String(), "\n")
+			return nil, strings.Split(stderr.String(), "\n"), err
 		}
 		lines := map[string]bool{}
 		for line, err := stdout.ReadString('\n'); err == nil; line, err = stdout.ReadString('\n') {
@@ -131,7 +131,7 @@ func runCommand(name string, args ...string) ([]string, error, []string) {
 			errs = strings.Split(strings.TrimSpace(stderr.String()), "\n")
 		}
 	}
-	return ret, nil, errs
+	return ret, errs, nil
 }
 
 var All = []VersionControlSoftware{

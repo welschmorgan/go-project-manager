@@ -4,14 +4,14 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/ui"
 )
 
-func askAuthor(wksp *models.Workspace) error {
+func askAuthor(wksp *config.Workspace) error {
 	var currentUser *user.User
 	var err error
-	var defaultAuthor *models.Person = wksp.Author
+	var defaultAuthor *config.Person = wksp.Author
 	if defaultAuthor != nil && len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
 		if currentUser, err = user.Current(); err != nil {
 			return err

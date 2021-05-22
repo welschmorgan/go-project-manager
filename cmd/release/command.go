@@ -7,8 +7,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/welschmorgan/go-project-manager/cmd/config"
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"github.com/welschmorgan/go-project-manager/vcs"
 )
@@ -30,7 +29,7 @@ var Command = &cobra.Command{
 	},
 }
 
-func stashModifications(p *models.Project, v vcs.VersionControlSoftware) error {
+func stashModifications(p *config.Project, v vcs.VersionControlSoftware) error {
 	if status, err := v.Status(vcs.StatusOptions{Short: true}); err != nil {
 		return err
 	} else if len(status) != 0 {
@@ -48,7 +47,7 @@ func stashModifications(p *models.Project, v vcs.VersionControlSoftware) error {
 	return nil
 }
 
-func release(p *models.Project) (err error) {
+func release(p *config.Project) (err error) {
 	if err = os.Chdir(p.Path); err != nil {
 		return err
 	}
@@ -102,26 +101,26 @@ func release(p *models.Project) (err error) {
 	return nil
 }
 
-func abortRelease(p *models.Project, v vcs.VersionControlSoftware) error {
+func abortRelease(p *config.Project, v vcs.VersionControlSoftware) error {
 	println("aborting release ...")
 	return nil
 }
 
-func checkoutBranch(p *models.Project, v vcs.VersionControlSoftware, branch string) error {
+func checkoutBranch(p *config.Project, v vcs.VersionControlSoftware, branch string) error {
 	if err := v.Checkout(branch, vcs.CheckoutOptions{CreateBranch: false}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func pullBranch(p *models.Project, v vcs.VersionControlSoftware) error {
+func pullBranch(p *config.Project, v vcs.VersionControlSoftware) error {
 	if err := v.Pull(vcs.PullOptions{All: false, Tags: false, Force: false}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func checkoutAndPullBranch(p *models.Project, v vcs.VersionControlSoftware, branch string) error {
+func checkoutAndPullBranch(p *config.Project, v vcs.VersionControlSoftware, branch string) error {
 	if err := checkoutBranch(p, v, branch); err != nil {
 		return err
 	}
@@ -131,21 +130,28 @@ func checkoutAndPullBranch(p *models.Project, v vcs.VersionControlSoftware, bran
 	return nil
 }
 
-func pullTags(p *models.Project, v vcs.VersionControlSoftware) error {
+func pullTags(p *config.Project, v vcs.VersionControlSoftware) error {
 	if err := v.Pull(vcs.PullOptions{All: false, Tags: true, Force: true}); err != nil {
 		return err
 	}
 	return nil
 }
 
-func releaseStart(p *models.Project, v vcs.VersionControlSoftware) error {
+func releaseStart(p *config.Project, v vcs.VersionControlSoftware) error {
+	version := "0.1"
+	branch := fmt.Sprintf("release/%s", version)
+	if err := v.Checkout(branch, vcs.CheckoutOptions{
+		CreateBranch: true,
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
-func releaseFinish(p *models.Project, v vcs.VersionControlSoftware) error {
+func releaseFinish(p *config.Project, v vcs.VersionControlSoftware) error {
 	return nil
 }
 
-func bumpVersion(p *models.Project, v vcs.VersionControlSoftware) error {
+func bumpVersion(p *config.Project, v vcs.VersionControlSoftware) error {
 	return nil
 }

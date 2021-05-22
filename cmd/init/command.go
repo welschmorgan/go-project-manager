@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/welschmorgan/go-project-manager/cmd/config"
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"gopkg.in/yaml.v2"
 )
@@ -57,6 +57,7 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 				}
 			}
 		}
+
 		if yaml, err := yaml.Marshal(&config.Get().Workspace); err != nil {
 			panic(err.Error())
 		} else {

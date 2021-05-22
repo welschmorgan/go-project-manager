@@ -4,11 +4,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/ui"
 )
 
-func askPath(wksp *models.Workspace) error {
+func askPath(wksp *config.Workspace) error {
 	var dir string
 	var err error
 	if len(strings.TrimSpace(wksp.Path)) == 0 {

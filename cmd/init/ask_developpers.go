@@ -1,10 +1,8 @@
 package init
 
-import (
-	"github.com/welschmorgan/go-project-manager/models"
-)
+import "github.com/welschmorgan/go-project-manager/config"
 
-func askDeveloppers(wksp *models.Workspace) error {
+func askDeveloppers(wksp *config.Workspace) error {
 	var err error
 	var menu *DevelopperMenu
 	if menu, err = NewDevelopperMenu(wksp); err != nil {

@@ -1,6 +1,7 @@
 package root
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,9 +9,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/welschmorgan/go-project-manager/cmd/config"
 	initCommand "github.com/welschmorgan/go-project-manager/cmd/init"
 	releaseCommand "github.com/welschmorgan/go-project-manager/cmd/release"
+	"github.com/welschmorgan/go-project-manager/config"
 	"gopkg.in/yaml.v2"
 )
 
@@ -86,7 +87,7 @@ func initConfig() {
 		}
 	}
 	if config.Get().Verbose {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fmt.Printf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
 	}
 	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
 		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
@@ -97,9 +98,22 @@ func initConfig() {
 		panic(err.Error())
 	}
 	config.Get().WorkspacePath = filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
-	if content, err := os.ReadFile(config.Get().WorkspacePath); err != nil {
-		panic(err.Error())
-	} else if err = yaml.Unmarshal(content, &config.Get().Workspace); err != nil {
-		panic(err.Error())
+	if _, err := os.Stat(config.Get().WorkspacePath); err == nil || os.IsExist(err) {
+		fmt.Printf("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
+		if content, err := os.ReadFile(config.Get().WorkspacePath); err != nil {
+			panic(err.Error())
+		} else {
+			if err = yaml.Unmarshal(content, &config.Get().Workspace); err != nil {
+				panic(err.Error())
+			}
+		}
+	}
+
+	if config.Get().Verbose {
+		if content, err := json.MarshalIndent(*config.Get(), "", "  "); err != nil {
+			panic(err.Error())
+		} else {
+			fmt.Printf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
+		}
 	}
 }

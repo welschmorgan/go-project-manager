@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/models"
+	"github.com/welschmorgan/go-project-manager/config"
 	"github.com/welschmorgan/go-project-manager/ui"
 	"github.com/welschmorgan/go-project-manager/vcs"
 )
@@ -46,10 +46,10 @@ func validateProject(k, v string) error {
 	return nil
 }
 
-func NewProjectMenu(workspace *models.Workspace) (*ProjectMenu, error) {
+func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
-		"Projects", "Name", &models.Project{},
+		"Projects", "Name", &config.Project{},
 		[]ui.ObjValidator{
 			validateProject,
 		},
@@ -83,11 +83,11 @@ func (m *ProjectMenu) Discover() error {
 				log.Printf("failed to open folder '%s'", err.Error())
 			} else {
 				if id, ok := m.Indices[dir.Name()]; ok {
-					if err = m.Edit(id, models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name())); err != nil {
+					if err = m.Edit(id, config.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name())); err != nil {
 						return err
 					}
 				} else {
-					m.Create(models.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
+					m.Create(config.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
 				}
 			}
 		}
