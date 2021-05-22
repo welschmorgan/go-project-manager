@@ -9,7 +9,7 @@ var (
 	DefaultReleaseBranch      string = "release/$VERSION"
 	DefaultVerbose            bool   = false
 	DefaultDryRun             bool   = false
-	DefaultAcquireVersionFrom string = "project"
+	DefaultAcquireVersionFrom string = "package"
 
 	instance *Config
 )

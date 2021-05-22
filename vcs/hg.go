@@ -29,6 +29,10 @@ func (h *Hg) Tag(name, commit, message string, options VersionControlOptions) er
 	return errNotYetImpl
 }
 func (h *Hg) Merge(source, dest string, options VersionControlOptions) error { return errNotYetImpl }
-func (s *Hg) Authors(options VersionControlOptions) ([]*config.Person, error) {
+func (s *Hg) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
+	return nil, errNotYetImpl
+}
+
+func (h *Hg) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }

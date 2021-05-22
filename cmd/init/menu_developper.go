@@ -49,7 +49,7 @@ func (m *DevelopperMenu) Discover() error {
 		if err := s.Open(project.Path); err != nil {
 			return err
 		}
-		if projectDeveloppers, err := s.Authors(nil); err != nil {
+		if projectDeveloppers, err := s.ListAuthors(nil); err != nil {
 			return err
 		} else {
 			for _, tmpDev := range projectDeveloppers {

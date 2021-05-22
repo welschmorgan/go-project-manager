@@ -9,7 +9,7 @@ import (
 type NodePackage map[string]interface{}
 
 func (p NodePackage) getValue(k string) (interface{}, error) {
-	if v, ok := p["name"]; !ok {
+	if v, ok := p[k]; !ok {
 		return nil, fmt.Errorf("no '%s' key found in package", k)
 	} else {
 		return v, nil
@@ -18,6 +18,37 @@ func (p NodePackage) getValue(k string) (interface{}, error) {
 
 func (p NodePackage) Name() (string, error) {
 	if v, err := p.getValue("name"); err != nil {
+		return "", err
+	} else {
+		return v.(string), nil
+	}
+}
+func (p NodePackage) Author() (string, error) {
+	if v, err := p.getValue("author"); err != nil {
+		return "", err
+	} else {
+		return v.(string), nil
+	}
+}
+
+func (p NodePackage) Description() (string, error) {
+	if v, err := p.getValue("description"); err != nil {
+		return "", err
+	} else {
+		return v.(string), nil
+	}
+}
+
+func (p NodePackage) Contributors() (string, error) {
+	if v, err := p.getValue("contributors"); err != nil {
+		return "", err
+	} else {
+		return v.(string), nil
+	}
+}
+
+func (p NodePackage) Maintainers() (string, error) {
+	if v, err := p.getValue("maintainers"); err != nil {
 		return "", err
 	} else {
 		return v.(string), nil

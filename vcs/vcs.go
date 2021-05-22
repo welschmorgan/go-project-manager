@@ -42,9 +42,9 @@ type CheckoutOptions struct {
 
 type PullOptions struct {
 	VersionControlOptions
-	Force bool
-	All   bool
-	Tags  bool
+	Force    bool
+	All      bool
+	ListTags bool
 }
 
 type PushOptions struct {
@@ -77,23 +77,63 @@ type BranchOptions struct {
 	SetUpstreamTo string
 }
 
+type ListTagsOptions struct {
+	VersionControlOptions
+	SortByTaggerDate    bool
+	SortByCommitterDate bool
+}
+
 type VersionControlSoftware interface {
+	// Retrieve the name of this vcs
 	Name() string
+
+	// Retrieve the path of the current repository
 	Path() string
+
+	// Retrieve the url of the current repository
 	Url() string
+
+	// Detect if a given path can be handled by this VCS
 	Detect(path string) (bool, error)
+
+	// Open a local repository, loading infos
 	Open(path string) error
+
+	// Clone a remote repository
 	Clone(url, path string, options VersionControlOptions) error
+
+	// Get the working tree status (dirty / clean)
 	Status(options VersionControlOptions) ([]string, error)
-	Branch(options VersionControlOptions) ([]string, error)
+
+	// Checkout a specific branch
 	Checkout(branch string, options VersionControlOptions) error
+
+	// Pull sources from remote repository
 	Pull(options VersionControlOptions) error
+
+	// Push sources to remote repository
 	Push(options VersionControlOptions) error
+
+	// Create a new tag
 	Tag(name, commit, message string, options VersionControlOptions) error
+
+	// Merge source into dest branch
 	Merge(source, dest string, options VersionControlOptions) error
+
+	// Create a new stash from the working tree
 	Stash(options VersionControlOptions) ([]string, error)
-	Authors(options VersionControlOptions) ([]*config.Person, error)
-	Remotes(options VersionControlOptions) (map[string]string, error)
+
+	// List repository branches
+	ListBranches(options VersionControlOptions) ([]string, error)
+
+	// List repository authors (scan all commits)
+	ListAuthors(options VersionControlOptions) ([]*config.Person, error)
+
+	// List repository remote urls
+	ListRemotes(options VersionControlOptions) (map[string]string, error)
+
+	// List tags
+	ListTags(options VersionControlOptions) ([]string, error)
 }
 
 // Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr

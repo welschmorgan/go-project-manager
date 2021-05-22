@@ -29,6 +29,10 @@ func (s *Svn) Tag(name, commit, message string, options VersionControlOptions) e
 	return errNotYetImpl
 }
 func (s *Svn) Merge(source, dest string, options VersionControlOptions) error { return errNotYetImpl }
-func (s *Svn) Authors(options VersionControlOptions) ([]*config.Person, error) {
+func (s *Svn) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
+	return nil, errNotYetImpl
+}
+
+func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }

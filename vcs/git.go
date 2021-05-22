@@ -27,7 +27,7 @@ func (g *Git) Detect(path string) (bool, error) {
 	return true, nil
 }
 
-func (g *Git) Branch(options VersionControlOptions) ([]string, error) {
+func (g *Git) ListBranches(options VersionControlOptions) ([]string, error) {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts BranchOptions
@@ -63,7 +63,7 @@ func (g *Git) Branch(options VersionControlOptions) ([]string, error) {
 
 func (g *Git) Open(p string) error {
 	g.path = p
-	if remotes, err := g.Remotes(nil); err != nil {
+	if remotes, err := g.ListRemotes(nil); err != nil {
 		return err
 	} else {
 		if len(remotes) == 0 {
@@ -214,7 +214,7 @@ func (g *Git) Pull(options VersionControlOptions) error {
 	if opts.All {
 		args = append(args, "--all")
 	}
-	if opts.Tags {
+	if opts.ListTags {
 		args = append(args, "--tags")
 	}
 	_, _, err := runCommand("git", args...)
@@ -278,7 +278,7 @@ func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
 	_, _, err := runCommand("git", args...)
 	return err
 }
-func (g *Git) Authors(options VersionControlOptions) ([]*config.Person, error) {
+func (g *Git) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var lines []string
@@ -297,7 +297,7 @@ func (g *Git) Authors(options VersionControlOptions) ([]*config.Person, error) {
 	return ret, nil
 }
 
-func (g *Git) Remotes(options VersionControlOptions) (map[string]string, error) {
+func (g *Git) ListRemotes(options VersionControlOptions) (map[string]string, error) {
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var lines []string
@@ -314,4 +314,33 @@ func (g *Git) Remotes(options VersionControlOptions) (map[string]string, error) 
 		}
 	}
 	return ret, nil
+}
+
+func (g *Git) ListTags(options VersionControlOptions) ([]string, error) {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	var err error
+	var opts ListTagsOptions
+	if ret, err := getOptions(options, ListTagsOptions{
+		SortByTaggerDate:    true,
+		SortByCommitterDate: false,
+	}); err != nil {
+		return nil, err
+	} else {
+		opts = ret.(ListTagsOptions)
+	}
+	args := []string{
+		"tag", "-l",
+	}
+	if opts.SortByCommitterDate {
+		args = append(args, "--sort=committerdate")
+	}
+	if opts.SortByTaggerDate {
+		args = append(args, "--sort=taggerdate")
+	}
+	out, _, err := runCommand("git", args...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }

@@ -1,32 +1,35 @@
 package project
 
 import (
+	"os"
 	"path/filepath"
-
-	"github.com/welschmorgan/go-release-manager/config"
 )
 
 type NodeProjectAccessor struct {
 	ProjectAccessor
-	infos   *config.Project
+	path    string
 	pkgFile string
 	pkg     NodePackage
 }
 
-func NewNodeProjectAccessor(infos *config.Project) *NodeProjectAccessor {
-	return &NodeProjectAccessor{
-		infos:   infos,
-		pkg:     NodePackage{},
-		pkgFile: filepath.Join(infos.Path, "package.json"),
-	}
+func (a *NodeProjectAccessor) Name() string {
+	return "Node"
 }
 
-func (a *NodeProjectAccessor) Infos() *config.Project {
-	return a.infos
+func (a *NodeProjectAccessor) Path() string {
+	return a.path
 }
 
-func (a *NodeProjectAccessor) Detect() (bool, error) {
-	if err := a.pkg.ReadFile(a.pkgFile); err != nil {
+func (a *NodeProjectAccessor) Open(p string) error {
+	a.path = p
+	a.pkg = NodePackage{}
+	a.pkgFile = filepath.Join(p, "package.json")
+	return a.pkg.ReadFile(a.pkgFile)
+}
+
+func (a *NodeProjectAccessor) Detect(p string) (bool, error) {
+	fname := filepath.Join(p, "package.json")
+	if _, err := os.Stat(fname); err != nil {
 		return false, err
 	}
 	return true, nil

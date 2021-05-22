@@ -1,6 +1,7 @@
 package release
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/project"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
@@ -114,7 +116,7 @@ func checkoutBranch(p *config.Project, v vcs.VersionControlSoftware, branch stri
 }
 
 func pullBranch(p *config.Project, v vcs.VersionControlSoftware) error {
-	if err := v.Pull(vcs.PullOptions{All: false, Tags: false, Force: false}); err != nil {
+	if err := v.Pull(vcs.PullOptions{All: false, ListTags: false, Force: false}); err != nil {
 		return err
 	}
 	return nil
@@ -131,7 +133,7 @@ func checkoutAndPullBranch(p *config.Project, v vcs.VersionControlSoftware, bran
 }
 
 func pullTags(p *config.Project, v vcs.VersionControlSoftware) error {
-	if err := v.Pull(vcs.PullOptions{All: false, Tags: true, Force: true}); err != nil {
+	if err := v.Pull(vcs.PullOptions{All: false, ListTags: true, Force: true}); err != nil {
 		return err
 	}
 	return nil
@@ -139,6 +141,26 @@ func pullTags(p *config.Project, v vcs.VersionControlSoftware) error {
 
 func releaseStart(p *config.Project, v vcs.VersionControlSoftware) error {
 	version := "0.1"
+	switch config.Get().AcquireVersionFrom {
+	case "tags":
+		if tags, err := v.ListTags(nil); err != nil {
+			return err
+		} else if len(tags) == 0 {
+			return errors.New("cannot acquire version from tags, no tags yet")
+		} else {
+			version = tags[len(tags)-1]
+		}
+	case "package":
+		accessor, err := project.Open(p.Path)
+		if err != nil {
+			return err
+		}
+		if version, err = accessor.CurrentVersion(); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("cannot acquire version from '%s', don't know what to do", config.Get().AcquireVersionFrom)
+	}
 	branch := fmt.Sprintf("release/%s", version)
 	if err := v.Checkout(branch, vcs.CheckoutOptions{
 		CreateBranch: true,
