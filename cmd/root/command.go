@@ -28,20 +28,22 @@ func init() {
 	if cwd, err := os.Getwd(); err != nil {
 		panic(err.Error())
 	} else {
-		config.WorkingDirectory = cwd
+		config.Get().WorkingDirectory = cwd
 	}
+	// config file
+	Command.PersistentFlags().StringVarP(&config.Get().CfgFile, "config", "c", config.Get().CfgFile, "config file (default is $HOME/.grlm.yaml)")
+	viper.BindPFlag("config", Command.PersistentFlags().Lookup("config"))
 
-	Command.PersistentFlags().StringVarP(&config.CfgFile, "config", "c", "", "config file (default is $HOME/.grlm.yaml)")
-	Command.PersistentFlags().BoolVarP(&config.Verbose, "verbose", "v", false, "show additionnal log messages")
-	Command.PersistentFlags().StringVarP(&config.WorkingDirectory, "change-directory", "C", config.WorkingDirectory, "change working directory")
-	// Command.PersistentFlags().StringP("author", "a", "YOUR NAME", "author name for copyright attribution")
-	// Command.PersistentFlags().StringVarP(&userLicense, "license", "l", "", "name of license for the project")
-	// Command.PersistentFlags().Bool("viper", true, "use Viper for configuration")
-	// viper.BindPFlag("author", Command.PersistentFlags().Lookup("author"))
-	// viper.BindPFlag("useViper", Command.PersistentFlags().Lookup("viper"))
-	// viper.SetDefault("author", "NAME HERE <EMAIL ADDRESS>")
-	// viper.SetDefault("license", "apache")
-	Command.PersistentFlags().StringVar(&config.WorkspacesRoot, "workspaces-root", "$HOME/projects", "The root folder where to find workspaces")
+	// verbose
+	Command.PersistentFlags().BoolVarP(&config.Get().Verbose, "verbose", "v", config.Get().Verbose, "show additionnal log messages")
+	viper.BindPFlag("verbose", Command.PersistentFlags().Lookup("verbose"))
+
+	// change working dir
+	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working-directory", "C", config.Get().WorkingDirectory, "change working directory")
+	viper.BindPFlag("working-directory", Command.PersistentFlags().Lookup("working-directory"))
+
+	// define workspaces root
+	Command.PersistentFlags().StringVar(&config.Get().WorkspacesRoot, "workspaces-root", config.Get().WorkspacesRoot, "The root folder where to find workspaces")
 	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces-root"))
 
 	// Command.ActionAddCommand(addCmd)
@@ -49,9 +51,9 @@ func init() {
 }
 
 func initConfig() {
-	if config.CfgFile != "" {
+	if config.Get().CfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(config.CfgFile)
+		viper.SetConfigFile(config.Get().CfgFile)
 	} else {
 		viper.SetConfigName("grlm")        // name of config file (without extension)
 		viper.SetConfigType("yaml")        // REQUIRED if the config file does not have the extension in the name
@@ -75,15 +77,15 @@ func initConfig() {
 			panic(fmt.Errorf("configuration error: %s", err))
 		}
 	}
-	if config.Verbose {
+	if config.Get().Verbose {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
-	if _, err := os.Stat(config.WorkingDirectory); err != nil && os.IsNotExist(err) {
-		if err := os.MkdirAll(config.WorkingDirectory, 0755); err != nil {
+	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
+		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
 			fmt.Printf("error: %s\n", err.Error())
 		}
 	}
-	if err := os.Chdir(config.WorkingDirectory); err != nil {
+	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {
 		panic(err.Error())
 	}
 }

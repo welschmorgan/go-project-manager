@@ -21,7 +21,7 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 `,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		wksp := models.Workspace{}
-		path := filepath.Join(config.WorkingDirectory, config.WorkspaceFilename)
+		path := filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
 		if _, err := os.Stat(path); err == nil {
 			if ret, err := ui.AskYN("Workspace already initialized, do you want to reconfigure it"); err != nil {
 				return err
