@@ -15,11 +15,15 @@ import (
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
 
+var errAbortRelease = errors.New("release aborted")
+
+// The release context
 type Context struct {
-	releaseBranch string
-	devBranch     string
-	prodBranch    string
-	version       string
+	startingBranch string // The branch the repository was on before starting release
+	releaseBranch  string // The release branch
+	devBranch      string // The development branch
+	prodBranch     string // The production branch
+	version        string // The version the project is in
 }
 
 var Command = &cobra.Command{
@@ -80,11 +84,16 @@ func release(p *config.Project) (err error) {
 	default:
 		return fmt.Errorf("cannot acquire version from '%s', don't know what to do", config.Get().AcquireVersionFrom)
 	}
+	curBranch, err := vc.CurrentBranch()
+	if err != nil {
+		return err
+	}
 	ctx := Context{
-		releaseBranch: strings.ReplaceAll(config.Get().BranchNames["release"], "$VERSION", version),
-		devBranch:     config.Get().BranchNames["development"],
-		prodBranch:    config.Get().BranchNames["production"],
-		version:       version,
+		startingBranch: curBranch,
+		releaseBranch:  strings.ReplaceAll(config.Get().BranchNames["release"], "$VERSION", version),
+		devBranch:      config.Get().BranchNames["development"],
+		prodBranch:     config.Get().BranchNames["production"],
+		version:        version,
 	}
 
 	// stash modifications
@@ -104,7 +113,9 @@ func release(p *config.Project) (err error) {
 
 	// wait for user to manually edit release
 
-	// TODO insert code
+	if err = waitUserToConfirm(p, vc, &ctx); err != nil {
+		return err
+	}
 
 	// finish release
 	if err = releaseFinish(p, vc, &ctx); err != nil {
@@ -118,6 +129,14 @@ func release(p *config.Project) (err error) {
 
 func abortRelease(p *config.Project, v vcs.VersionControlSoftware) error {
 	println("aborting release ...")
+	return nil
+}
+
+func waitUserToConfirm(p *config.Project, v vcs.VersionControlSoftware, ctx *Context) error {
+	ok, _ := ui.AskYN("Finish release now")
+	if !ok {
+		return errAbortRelease
+	}
 	return nil
 }
 
@@ -136,18 +155,20 @@ func updateRepository(p *config.Project, v vcs.VersionControlSoftware, ctx *Cont
 }
 
 func stashModifications(p *config.Project, v vcs.VersionControlSoftware, ctx *Context) error {
-	if status, err := v.Status(vcs.StatusOptions{Short: true}); err != nil {
+	oldDryRun := config.Get().DryRun
+	config.Get().DryRun = false
+	status, err := v.Status(vcs.StatusOptions{Short: true})
+	config.Get().DryRun = oldDryRun
+	if err != nil {
 		return err
 	} else if len(status) != 0 {
-		fmt.Printf("There is work in progress:\n%v\n", status)
-		if ok, _ := ui.AskYN("Do you want to stash it"); ok {
-			if out, err := v.Stash(vcs.StashOptions{
-				IncludeUntracked: true,
-			}); err != nil {
-				return err
-			} else {
-				fmt.Printf("%v\n", out)
-			}
+		message := fmt.Sprintf("Before release %s, on branch %s", ctx.version, ctx.startingBranch)
+		fmt.Printf("The current repository is dirty:\n%v\n\t-> stashed under '%s'\n", status, message)
+		if _, err := v.Stash(vcs.StashOptions{
+			IncludeUntracked: true,
+			Message:          message,
+		}); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -195,10 +216,16 @@ func releaseStart(p *config.Project, v vcs.VersionControlSoftware, ctx *Context)
 }
 
 func releaseFinish(p *config.Project, v vcs.VersionControlSoftware, ctx *Context) error {
+	// merge release branch into prod branch
 	if err := v.Merge(ctx.releaseBranch, ctx.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
 	}
+	// tag prod branch
 	if err := v.Tag(ctx.version, vcs.TagOptions{Annotated: true, Message: fmt.Sprintf("Release %s: %s", ctx.version, "TODO")}); err != nil {
+		return err
+	}
+	// retro merge tag into dev branch
+	if err := v.Merge(ctx.version, ctx.devBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
 	}
 	return nil

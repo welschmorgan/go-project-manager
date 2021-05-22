@@ -113,6 +113,9 @@ type VersionControlSoftware interface {
 	// Get the working tree status (dirty / clean)
 	Status(options VersionControlOptions) ([]string, error)
 
+	// Get the name of the currently checked out branch
+	CurrentBranch() (string, error)
+
 	// Checkout a specific branch
 	Checkout(branch string, options VersionControlOptions) error
 
@@ -148,7 +151,7 @@ type VersionControlSoftware interface {
 func runCommand(name string, args ...string) ([]string, []string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	if config.Get().Verbose {
+	if config.Get().Verbose || config.Get().DryRun {
 		argStr := ""
 		for _, a := range args {
 			if len(argStr) > 0 {

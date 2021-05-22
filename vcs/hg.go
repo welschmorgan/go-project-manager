@@ -28,6 +28,9 @@ func (h *Hg) Push(options VersionControlOptions) error                    { retu
 func (h *Hg) Tag(name string, options VersionControlOptions) error {
 	return errNotYetImpl
 }
+func (h *Hg) CurrentBranch() (string, error) {
+	return "", errNotYetImpl
+}
 func (h *Hg) Merge(source, dest string, options VersionControlOptions) error { return errNotYetImpl }
 func (s *Hg) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
 	return nil, errNotYetImpl

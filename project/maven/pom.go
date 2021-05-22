@@ -1,14 +1,14 @@
-package project
+package maven
 
 import (
-	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"os"
 )
 
-type NodePackage map[string]interface{}
+type POMFile map[string]interface{}
 
-func (p NodePackage) getValue(k string) (interface{}, error) {
+func (p POMFile) getValue(k string) (interface{}, error) {
 	if v, ok := p[k]; !ok {
 		return nil, fmt.Errorf("no '%s' key found in package", k)
 	} else {
@@ -16,14 +16,14 @@ func (p NodePackage) getValue(k string) (interface{}, error) {
 	}
 }
 
-func (p NodePackage) Name() (string, error) {
+func (p POMFile) Name() (string, error) {
 	if v, err := p.getValue("name"); err != nil {
 		return "", err
 	} else {
 		return v.(string), nil
 	}
 }
-func (p NodePackage) Author() (string, error) {
+func (p POMFile) Author() (string, error) {
 	if v, err := p.getValue("author"); err != nil {
 		return "", err
 	} else {
@@ -31,7 +31,7 @@ func (p NodePackage) Author() (string, error) {
 	}
 }
 
-func (p NodePackage) Description() (string, error) {
+func (p POMFile) Description() (string, error) {
 	if v, err := p.getValue("description"); err != nil {
 		return "", err
 	} else {
@@ -39,7 +39,7 @@ func (p NodePackage) Description() (string, error) {
 	}
 }
 
-func (p NodePackage) Contributors() (string, error) {
+func (p POMFile) Contributors() (string, error) {
 	if v, err := p.getValue("contributors"); err != nil {
 		return "", err
 	} else {
@@ -47,7 +47,7 @@ func (p NodePackage) Contributors() (string, error) {
 	}
 }
 
-func (p NodePackage) Maintainers() (string, error) {
+func (p POMFile) Maintainers() (string, error) {
 	if v, err := p.getValue("maintainers"); err != nil {
 		return "", err
 	} else {
@@ -55,7 +55,7 @@ func (p NodePackage) Maintainers() (string, error) {
 	}
 }
 
-func (p NodePackage) Version() (string, error) {
+func (p POMFile) Version() (string, error) {
 	if v, err := p.getValue("version"); err != nil {
 		return "", err
 	} else {
@@ -63,7 +63,7 @@ func (p NodePackage) Version() (string, error) {
 	}
 }
 
-func (p NodePackage) Scripts() (map[string]string, error) {
+func (p POMFile) Scripts() (map[string]string, error) {
 	if v, err := p.getValue("scripts"); err != nil {
 		return nil, err
 	} else {
@@ -71,7 +71,7 @@ func (p NodePackage) Scripts() (map[string]string, error) {
 	}
 }
 
-func (p NodePackage) Dependencies() (map[string]string, error) {
+func (p POMFile) Dependencies() (map[string]string, error) {
 	if v, err := p.getValue("dependencies"); err != nil {
 		return nil, err
 	} else {
@@ -79,7 +79,7 @@ func (p NodePackage) Dependencies() (map[string]string, error) {
 	}
 }
 
-func (p NodePackage) DevDependencies() (map[string]string, error) {
+func (p POMFile) DevDependencies() (map[string]string, error) {
 	if v, err := p.getValue("devDependencies"); err != nil {
 		return nil, err
 	} else {
@@ -87,14 +87,14 @@ func (p NodePackage) DevDependencies() (map[string]string, error) {
 	}
 }
 
-func (p NodePackage) Read(b []byte) error {
-	if err := json.Unmarshal(b, &p); err != nil {
+func (p POMFile) Read(b []byte) error {
+	if err := xml.Unmarshal(b, &p); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (p NodePackage) ReadFile(fname string) error {
+func (p POMFile) ReadFile(fname string) error {
 	if _, err := os.Stat(fname); err == nil || os.IsExist(err) {
 		if content, err := os.ReadFile(fname); err != nil {
 			return err

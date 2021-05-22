@@ -32,7 +32,9 @@ func (s *Svn) Merge(source, dest string, options VersionControlOptions) error { 
 func (s *Svn) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
 	return nil, errNotYetImpl
 }
-
+func (s *Svn) CurrentBranch() (string, error) {
+	return "", errNotYetImpl
+}
 func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }

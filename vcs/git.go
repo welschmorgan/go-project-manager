@@ -131,6 +131,9 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 	if opts.IncludeUntracked {
 		args = append(args, "-u")
 	}
+	if len(strings.TrimSpace(opts.Message)) > 0 {
+		args = append(args, opts.Message)
+	}
 	out, errTxt, err := runCommand("git", args...)
 	if len(errTxt) > 0 {
 		if len(errTxt) == 1 {
@@ -278,6 +281,26 @@ func (g *Git) Tag(name string, options VersionControlOptions) error {
 	}
 	_, _, err := runCommand("git", args...)
 	return err
+}
+
+func (g *Git) CurrentBranch() (string, error) {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	args := []string{
+		"rev-parse", "--abbrev-ref", "HEAD",
+	}
+	out, _, err := runCommand("git", args...)
+	if err != nil {
+		return "", err
+	}
+	if len(out) == 0 {
+		if config.Get().DryRun {
+			return "my-branch", nil
+		} else {
+			return "", errors.New("no branch name found")
+		}
+	}
+	return out[0], nil
 }
 
 func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
