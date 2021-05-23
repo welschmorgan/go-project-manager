@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/project/maven"
 	"github.com/welschmorgan/go-release-manager/project/node"
@@ -32,7 +33,9 @@ func Get(n string) accessor.ProjectAccessor {
 
 func Detect(p string) (accessor.ProjectAccessor, error) {
 	for _, a := range All {
-		println("detect: " + p + " - " + a.Name())
+		if config.Get().Verbose {
+			fmt.Printf("%sdetect project: %s - %s\n", strings.Repeat("\t", config.Get().Indent), p, a.Name())
+		}
 		if ok, err := a.Detect(p); ok {
 			if err != nil {
 				return nil, err

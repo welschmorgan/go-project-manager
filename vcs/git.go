@@ -74,7 +74,7 @@ func (g *Git) Open(p string) error {
 					"fake-for-dry-run": "http://fake.com",
 				}
 			} else {
-				fmt.Fprintf(os.Stderr, "[\033[1;31m-\033[0m] no remotes configured for '%s'\n", filepath.Base(g.path))
+				fmt.Fprintf(os.Stderr, "%s[\033[1;31m-\033[0m] no remotes configured for '%s'\n", strings.Repeat("\t", config.Get().Indent), filepath.Base(g.path))
 			}
 		}
 		g.url = ""

@@ -154,6 +154,11 @@ func (r *Release) Do() error {
 	return nil
 }
 
+func (r *Release) Step(n string) {
+	fmt.Fprintf(os.Stderr, "[\033[1;34m*\033[0m] %s\n", n)
+	config.Get().Indent = 1
+}
+
 func (r *Release) Undo() error {
 	errs := []error{}
 
@@ -199,6 +204,7 @@ func (r *Release) WaitUserToConfirm() error {
 
 func (r *Release) UpdateRepository() error {
 	var err error
+	r.Step("Update repository")
 	if err = r.CheckoutAndPullBranch(r.Context.prodBranch); err != nil {
 		return err
 	}
@@ -212,6 +218,7 @@ func (r *Release) UpdateRepository() error {
 }
 
 func (r *Release) StashModifications() error {
+	r.Step("Stash modifications")
 	oldDryRun := config.Get().DryRun
 	config.Get().DryRun = false
 	status, err := r.Vc.Status(vcs.StatusOptions{Short: true})
@@ -278,6 +285,7 @@ func (r *Release) PullTags() error {
 
 func (r *Release) ReleaseStart() error {
 	var err error
+	r.Step("Start release")
 	r.Context.state |= ReleaseStartStarted
 	if r.Context.oldBranch, err = r.Vc.CurrentBranch(); err != nil {
 		return err
@@ -301,6 +309,7 @@ func (r *Release) ReleaseStart() error {
 
 func (r *Release) ReleaseFinish() error {
 	// merge release branch into prod branch
+	r.Step("Finish release")
 	r.Context.state |= ReleaseFinishStarted
 	if err := r.Vc.Merge(r.Context.releaseBranch, r.Context.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
@@ -335,6 +344,7 @@ func (r *Release) ReleaseFinish() error {
 }
 
 func (r *Release) BumpVersion() error {
+	r.Step("Bump version")
 	r.PushUndoAction("bump_version", r.Project.Path, r.Vc.Name(), map[string]interface{}{
 		"oldVersion": r.Context.version,
 		"newVersion": r.Context.nextVersion,
