@@ -150,7 +150,7 @@ func abortRelease(p *config.Project, v vcs.VersionControlSoftware) error {
 		}
 	}
 	if len(errs) > 0 {
-		errStr := fmt.Sprintf("There were errors while undoing release:\n")
+		errStr := "there were errors while undoing release:\n"
 		for _, e := range errs {
 			errStr += fmt.Sprintf(" - %s\n", e.Error())
 		}
