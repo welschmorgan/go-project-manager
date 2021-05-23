@@ -15,9 +15,10 @@ import (
 )
 
 var Command = &cobra.Command{
-	Use:   "grlm [commands]",
-	Short: "Release multiple projects in a single go",
-	Long:  `GRLM allows releasing multiple projects declared in a workspace`,
+	Use:          "grlm [commands]",
+	Short:        "Release multiple projects in a single go",
+	Long:         `GRLM allows releasing multiple projects declared in a workspace`,
+	SilenceUsage: true,
 }
 
 // Execute executes the root command.
@@ -90,7 +91,7 @@ func initConfig() {
 	}
 	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
 		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
-			fmt.Printf("error: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "\033[1;33merror\033[0m: %s\n", err.Error())
 		}
 	}
 	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {

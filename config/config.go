@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	Workspace
+	Indent            int
 	WorkspacesRoot    string
 	Verbose           bool
 	CfgFile           string
@@ -14,6 +15,7 @@ type Config struct {
 	WorkspaceFilename string
 	WorkspacePath     string
 	DryRun            bool
+	Interactive       bool
 }
 
 func NewConfig() (*Config, error) {
@@ -24,11 +26,13 @@ func NewConfig() (*Config, error) {
 			Workspace:         *NewWorkspace(),
 			WorkspacesRoot:    DefaultWorkspacesRoot,
 			Verbose:           DefaultVerbose,
+			Indent:            0,
 			CfgFile:           "",
 			WorkingDirectory:  cwd,
 			WorkspaceFilename: DefaultWorkspaceFilename,
 			WorkspacePath:     filepath.Join(cwd, DefaultWorkspaceFilename),
 			DryRun:            DefaultDryRun,
+			Interactive:       DefaultInteractive,
 		}, nil
 	}
 }

@@ -101,6 +101,13 @@ type ResetOptions struct {
 	Hard   bool
 	Commit string
 }
+type DeleteBranchOptions struct {
+	VersionControlOptions
+	Local      bool
+	Remote     bool
+	RemoteName string
+}
+
 type VersionControlSoftware interface {
 	// Retrieve the name of this vcs
 	Name() string
@@ -164,9 +171,9 @@ type VersionControlSoftware interface {
 }
 
 // Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
-func runCommand(name string, args ...string) ([]string, []string, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+func runCommand(name string, args ...string) (exitCode int, stdout []string, stderr []string, error error) {
+	var bufStdout bytes.Buffer
+	var bufStderr bytes.Buffer
 	if config.Get().Verbose || config.Get().DryRun {
 		argStr := ""
 		for _, a := range args {
@@ -175,30 +182,66 @@ func runCommand(name string, args ...string) ([]string, []string, error) {
 			}
 			argStr += fmt.Sprintf("%q", a)
 		}
-		fmt.Printf("* exec: %q %s\n", name, argStr)
+		fmt.Printf("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), name, argStr)
 	}
 	ret := []string{}
 	var errs []string
 	if !config.Get().DryRun {
 		cmd := exec.Command(name, args...)
-		cmd.Stderr = &stderr
-		cmd.Stdout = &stdout
+		cmd.Stderr = &bufStderr
+		cmd.Stdout = &bufStdout
 		if err := cmd.Run(); err != nil {
-			return nil, strings.Split(stderr.String(), "\n"), err
+			return cmd.ProcessState.ExitCode(), nil, strings.Split(bufStderr.String(), "\n"), err
 		}
+		exitCode = cmd.ProcessState.ExitCode()
 		lines := map[string]bool{}
-		for line, err := stdout.ReadString('\n'); err == nil; line, err = stdout.ReadString('\n') {
+		for line, err := bufStdout.ReadString('\n'); err == nil; line, err = bufStdout.ReadString('\n') {
 			line = strings.TrimSpace(line)
 			if ok := lines[line]; !ok {
 				lines[line] = true
 				ret = append(ret, line)
 			}
 		}
-		if len(strings.TrimSpace(stderr.String())) > 0 {
-			errs = strings.Split(strings.TrimSpace(stderr.String()), "\n")
+		if len(strings.TrimSpace(bufStderr.String())) > 0 {
+			errs = strings.Split(strings.TrimSpace(bufStderr.String()), "\n")
 		}
 	}
-	return ret, errs, nil
+	return exitCode, ret, errs, nil
+}
+
+func dumpCommandErrors(exitCode int, errs []string) {
+	level := ""
+	color := ""
+	indent := strings.Repeat("\t", config.Get().Indent)
+	if exitCode != 0 {
+		level = "error"
+		color = "\033[1;31m"
+	} else {
+		level = "warning"
+		color = "\033[1;33m"
+	}
+	shouldPrint := level == "error" || config.Get().Verbose
+	if !shouldPrint {
+		return
+	}
+	if len(errs) > 0 {
+		if len(errs) == 1 {
+			fmt.Fprintf(os.Stderr, "%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
+		} else {
+			errStr := ""
+			numErrs := 0
+			for _, err := range errs {
+				if len(strings.TrimSpace(err)) > 0 {
+					if len(errStr) > 0 {
+						errStr += "\n"
+					}
+					errStr += fmt.Sprintf("%s\t- %s", indent, strings.TrimSpace(err))
+					numErrs += 1
+				}
+			}
+			fmt.Fprintf(os.Stderr, "%s%s%d %s(s)%s:\n%s\n", indent, color, len(errs), level, "\033[0m", errStr)
+		}
+	}
 }
 
 var All = []VersionControlSoftware{
@@ -207,10 +250,15 @@ var All = []VersionControlSoftware{
 	&Hg{},
 }
 
+func instanciate(a VersionControlSoftware) VersionControlSoftware {
+	inst := reflect.New(reflect.TypeOf(a).Elem())
+	return inst.Interface().(VersionControlSoftware)
+}
+
 func Get(n string) VersionControlSoftware {
 	for _, s := range All {
 		if s.Name() == n {
-			return s
+			return instanciate(s)
 		}
 	}
 	return nil
@@ -223,7 +271,7 @@ func Detect(path string) (VersionControlSoftware, error) {
 			fmt.Fprintf(os.Stderr, "error: %s: %s", path, err.Error())
 		}
 		if ok {
-			return s, nil
+			return instanciate(s), nil
 		}
 	}
 	return nil, fmt.Errorf("unknown vcs for folder '%s'", path)

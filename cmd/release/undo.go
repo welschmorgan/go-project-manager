@@ -12,16 +12,18 @@ type UndoAction struct {
 	Title         string
 	Path          string
 	SourceControl string
+	VC            vcs.VersionControlSoftware
 	Params        map[string]interface{}
+	Executed      bool
 }
 
 var undoActionParams = map[string][]string{
-	"stash_save":    []string{"name"},
-	"create_branch": []string{"newBranch", "oldBranch"},
-	"checkout":      []string{"newBranch", "oldBranch"},
-	"merge":         []string{"source", "target"},
-	"create_tag":    []string{"name"},
-	"bump_version":  []string{"oldVersion", "newVersion"},
+	"stash_save":    {"name"},
+	"create_branch": {"newBranch", "oldBranch"},
+	"checkout":      {"newBranch", "oldBranch"},
+	"merge":         {"source", "target"},
+	"create_tag":    {"name"},
+	"bump_version":  {"oldVersion", "newVersion"},
 }
 
 var undoActionParamHandlers = map[string]func(*UndoAction) error{
@@ -59,25 +61,29 @@ func NewUndoAction(name, path, vc string, params map[string]interface{}) (*UndoA
 		SourceControl: vc,
 		Params:        params,
 	}
-
+	if vc, err := vcs.Detect(path); err != nil {
+		return nil, err
+	} else {
+		act.VC = vc
+	}
 	if _, ok := undoActionParams[name]; !ok {
 		return nil, fmt.Errorf("unknown action '%s'", name)
 	} else {
 		if handler, ok := undoActionParamHandlers[name]; !ok {
 			return nil, fmt.Errorf("unknown undo action param handler for '%s'", name)
-		} else {
-			if err := os.Chdir(path); err != nil {
-				return nil, err
-			}
-			if err := handler(act); err != nil {
-				return nil, err
-			}
+		} else if err := handler(act); err != nil {
+			return nil, err
 		}
 	}
 	return act, nil
 }
 
 func (u *UndoAction) Run() error {
+	defer func() { u.Executed = true }()
+	// println("cd " + u.Path)
+	// if err := os.Chdir(u.Path); err != nil {
+	// 	return err
+	// }
 	switch u.Name {
 	case "stash_save":
 		return u.undoStashSave()
@@ -97,23 +103,32 @@ func (u *UndoAction) Run() error {
 }
 
 func (u *UndoAction) undoStashSave() error {
-	if vc, err := vcs.Detect(u.Path); err != nil {
-		return err
-	} else {
-		_, err := vc.Stash(vcs.StashOptions{
-			Pop: true,
-		})
-		return err
-	}
+	_, err := u.VC.Stash(vcs.StashOptions{
+		Pop: true,
+	})
+	return err
 }
 
 func (u *UndoAction) undoCreateBranch() error {
 	// oldBranch := u.Params["oldBranch"].(string)
 	newBranch := u.Params["newBranch"].(string)
-	if vc, err := vcs.Detect(u.Path); err != nil {
+	if branches, err := u.VC.ListBranches(nil); err != nil {
 		return err
-	} else if err := vc.DeleteBranch(newBranch, nil); err != nil {
-		return err
+	} else {
+		alreadyDeleted := true
+		for _, b := range branches {
+			if b == newBranch {
+				alreadyDeleted = false
+				break
+			}
+		}
+		if !alreadyDeleted {
+			if err := u.VC.DeleteBranch(newBranch, nil); err != nil {
+				return err
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "\t\tBranch '%s' has already been deleted\n", newBranch)
+		}
 	}
 	return nil
 }
@@ -121,21 +136,15 @@ func (u *UndoAction) undoCreateBranch() error {
 func (u *UndoAction) undoCheckout() error {
 	oldBranch := u.Params["oldBranch"].(string)
 	// newBranch := u.Params["newBranch"].(string)
-	if vc, err := vcs.Detect(u.Path); err != nil {
-		return err
-	} else {
-		return vc.Checkout(oldBranch, nil)
-	}
+	return u.VC.Checkout(oldBranch, nil)
 }
 
 func (u *UndoAction) undoMerge() error {
 	// source := u.Params["source"].(string)
 	target := u.Params["target"].(string)
-	if vc, err := vcs.Detect(u.Path); err != nil {
+	if err := u.VC.Checkout(target, nil); err != nil {
 		return err
-	} else if err := vc.Checkout(target, nil); err != nil {
-		return err
-	} else if err := vc.Reset(vcs.ResetOptions{Commit: "HEAD~1", Hard: true}); err != nil {
+	} else if err := u.VC.Reset(vcs.ResetOptions{Commit: "HEAD~1", Hard: true}); err != nil {
 		return err
 	}
 	return nil
@@ -143,21 +152,13 @@ func (u *UndoAction) undoMerge() error {
 
 func (u *UndoAction) undoTag() error {
 	name := u.Params["name"].(string)
-	if vc, err := vcs.Detect(u.Path); err != nil {
-		return err
-	} else {
-		return vc.Tag(name, vcs.TagOptions{
-			Delete: true,
-		})
-	}
+	return u.VC.Tag(name, vcs.TagOptions{
+		Delete: true,
+	})
 }
 
 func (u *UndoAction) undoBumpVersion() error {
 	// oldVersion := u.Params["oldVersion"].(string)
 	// newVersion := u.Params["newVersion"].(string)
-	if _, err := vcs.Detect(u.Path); err != nil {
-		return err
-	} else {
-		return nil
-	}
+	return nil
 }
