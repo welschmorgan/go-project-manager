@@ -127,8 +127,7 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 	} else {
 		opts = ret.(StashOptions)
 	}
-	args := []string{}
-	args = append(args, "stash")
+	args := []string{"stash"}
 	if opts.Save {
 		args = append(args, "save")
 	} else if opts.List {
@@ -137,7 +136,8 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 		args = append(args, "apply")
 	} else if opts.Pop {
 		args = append(args, "pop")
-	} else if opts.IncludeUntracked {
+	}
+	if opts.IncludeUntracked {
 		args = append(args, "-u")
 	}
 	if len(strings.TrimSpace(opts.Message)) > 0 {
@@ -160,10 +160,9 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 func (g *Git) DeleteBranch(name string, options VersionControlOptions) error {
 	fs.Pushd(g.path)
 	defer fs.Popd()
-	args := []string{
-		"branch", "-D",
-	}
-	_, _, err := runCommand("git", args...)
+	_, _, err := runCommand("git", []string{
+		"branch", "-D", name,
+	}...)
 	return err
 }
 

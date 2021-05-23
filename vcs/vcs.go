@@ -216,15 +216,26 @@ func Get(n string) VersionControlSoftware {
 	return nil
 }
 
-func Open(path string) (VersionControlSoftware, error) {
+func Detect(path string) (VersionControlSoftware, error) {
 	for _, s := range All {
 		ok, err := s.Detect(path)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %s: %s", path, err.Error())
 		}
 		if ok {
-			return s, s.Open(path)
+			return s, nil
 		}
 	}
 	return nil, fmt.Errorf("unknown vcs for folder '%s'", path)
+}
+
+func Open(path string) (VersionControlSoftware, error) {
+	if vc, err := Detect(path); err != nil {
+		return nil, err
+	} else {
+		if err := vc.Open(path); err != nil {
+			return nil, err
+		}
+		return vc, nil
+	}
 }

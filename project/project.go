@@ -32,6 +32,7 @@ func Get(n string) accessor.ProjectAccessor {
 
 func Detect(p string) (accessor.ProjectAccessor, error) {
 	for _, a := range All {
+		println("detect: " + p + " - " + a.Name())
 		if ok, err := a.Detect(p); ok {
 			if err != nil {
 				return nil, err
