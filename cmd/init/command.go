@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/ui"
-	"gopkg.in/yaml.v2"
 )
 
 var Command = &cobra.Command{
@@ -57,15 +56,6 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 				}
 			}
 		}
-
-		if yaml, err := yaml.Marshal(&config.Get().Workspace); err != nil {
-			panic(err.Error())
-		} else {
-			if err := os.WriteFile(config.Get().WorkspacePath, yaml, 0755); err != nil {
-				return err
-			}
-			fmt.Printf("Written '%s':\n%s\n", config.Get().WorkspacePath, yaml)
-		}
-		return nil
+		return config.Get().Workspace.WriteFile(config.Get().WorkspacePath)
 	},
 }

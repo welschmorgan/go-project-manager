@@ -12,7 +12,6 @@ import (
 	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
 	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
 	"github.com/welschmorgan/go-release-manager/config"
-	"gopkg.in/yaml.v2"
 )
 
 var Command = &cobra.Command{
@@ -100,12 +99,8 @@ func initConfig() {
 	config.Get().WorkspacePath = filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
 	if _, err := os.Stat(config.Get().WorkspacePath); err == nil || os.IsExist(err) {
 		fmt.Printf("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
-		if content, err := os.ReadFile(config.Get().WorkspacePath); err != nil {
+		if err = config.Get().Workspace.ReadFile(config.Get().WorkspacePath); err != nil {
 			panic(err.Error())
-		} else {
-			if err = yaml.Unmarshal(content, &config.Get().Workspace); err != nil {
-				panic(err.Error())
-			}
 		}
 	}
 
