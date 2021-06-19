@@ -1,23 +1,16 @@
 package vcs
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"io"
-	"log"
 	"os"
-	"os/exec"
 	"reflect"
-	"strings"
-	"sync"
 
 	"github.com/welschmorgan/go-release-manager/config"
 )
 
 var (
 	errNotYetImpl = errors.New("not yet implemented")
-	SHOW_ERRORS   = true
 	TRACE         = true
 )
 
@@ -93,110 +86,6 @@ type VersionControlSoftware interface {
 
 	// List tags
 	ListTags(options VersionControlOptions) ([]string, error)
-}
-
-// Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
-func RunCommand(name string, args ...string) (exitCode int, stdout []string, stderr []string, error error) {
-	var bufStdout *bytes.Buffer = bytes.NewBufferString("")
-	var bufStderr *bytes.Buffer = bytes.NewBufferString("")
-	if TRACE || config.Get().Verbose || config.Get().DryRun {
-		argStr := ""
-		for _, a := range args {
-			if len(argStr) > 0 {
-				argStr += " "
-			}
-			argStr += fmt.Sprintf("%q", a)
-		}
-		fmt.Printf("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), name, argStr)
-	}
-	ret := []string{}
-	var errs []string
-	if !config.Get().DryRun {
-		cmd := exec.Command(name, args...)
-		stdout, _ := cmd.StdoutPipe()
-		stderr, _ := cmd.StderrPipe()
-
-		if err := cmd.Start(); err != nil {
-			log.Printf("Error executing command: %s......\n", err.Error())
-			return -1, nil, nil, err
-		}
-
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			io.Copy(os.Stdout, stdout)
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			io.Copy(os.Stderr, stderr)
-		}()
-
-		wg.Wait()
-
-		if err := cmd.Wait(); err != nil {
-			if !cmd.ProcessState.Exited() {
-				log.Printf("Failed to wait for command, killing now... %v", cmd.Process.Kill())
-				return -1, nil, nil, err
-			}
-		}
-
-		exitCode = cmd.ProcessState.ExitCode()
-		lines := map[string]bool{}
-		io.Copy(bufStdout, stdout)
-		io.Copy(bufStderr, stderr)
-		defer stdout.Close()
-		defer stderr.Close()
-		for line, err := bufStdout.ReadString('\n'); err == nil; line, err = bufStdout.ReadString('\n') {
-			line = strings.TrimSpace(line)
-			if ok := lines[line]; !ok {
-				lines[line] = true
-				ret = append(ret, line)
-			}
-		}
-		if len(strings.TrimSpace(bufStderr.String())) > 0 {
-			errs = strings.Split(strings.TrimSpace(bufStderr.String()), "\n")
-		}
-	}
-	return exitCode, ret, errs, nil
-}
-
-func DumpCommandErrors(exitCode int, errs []string) {
-	level := ""
-	color := ""
-	indent := strings.Repeat("\t", config.Get().Indent)
-	if exitCode != 0 {
-		level = "error"
-		color = "\033[1;31m"
-	} else {
-		level = "warning"
-		color = "\033[1;33m"
-	}
-	shouldPrint := level == "error" || config.Get().Verbose
-	if !shouldPrint {
-		return
-	}
-	if SHOW_ERRORS && len(errs) > 0 {
-		if len(errs) == 1 {
-			fmt.Fprintf(os.Stderr, "%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
-		} else {
-			errStr := ""
-			numErrs := 0
-			for _, err := range errs {
-				if len(strings.TrimSpace(err)) > 0 {
-					if len(errStr) > 0 {
-						errStr += "\n"
-					}
-					errStr += fmt.Sprintf("%s\t- %s", indent, strings.TrimSpace(err))
-					numErrs += 1
-				}
-			}
-			fmt.Fprintf(os.Stderr, "%s%s%d %s(s)%s:\n%s\n", indent, color, len(errs), level, "\033[0m", errStr)
-		}
-	}
 }
 
 var All = []VersionControlSoftware{

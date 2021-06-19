@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/welschmorgan/go-release-manager/exec"
 	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/ui"
@@ -74,11 +75,11 @@ func (s *MavenScaffolder) Scaffold(ctx *accessor.FinalizationContext) error {
 			}
 			println(archetypeDir)
 			println(artifactId)
-			_, stdout, _, _ := vcs.RunCommand("mvn", "-v")
+			_, stdout, _, _ := exec.RunCommand("mvn", "-v")
 			for _, line := range stdout {
 				println(line)
 			}
-			exit, stdout, stderr, err := vcs.RunCommand(
+			exit, stdout, stderr, err := exec.RunCommand(
 				"mvn", "archetype:generate",
 				"-B",
 				"-DgroupId="+groupId,
@@ -95,7 +96,7 @@ func (s *MavenScaffolder) Scaffold(ctx *accessor.FinalizationContext) error {
 			for _, line := range stdout {
 				println(line)
 			}
-			vcs.DumpCommandErrors(exit, stderr)
+			exec.DumpCommandErrors(exit, stderr)
 			if err != nil {
 				return fmt.Errorf("failed to generate maven project archetype, %s", err.Error())
 			}

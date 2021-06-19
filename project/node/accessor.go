@@ -48,3 +48,8 @@ func (a *ProjectAccessor) Name() (string, error) {
 func (a *ProjectAccessor) DescriptionFile() string {
 	return "package.json"
 }
+
+func (a *ProjectAccessor) Scaffold(ctx *accessor.FinalizationContext) error {
+	// exec.RunCommand("")
+	return nil
+}

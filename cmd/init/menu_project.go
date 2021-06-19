@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/exec"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
@@ -117,14 +118,12 @@ func (m *ProjectMenu) CreateFinalizationContext(workspace *config.Workspace, pro
 	ctx := accessor.NewFinalizationContext(v, a, proj, workspace)
 	if err := v.Detect(proj.Path); err == nil {
 		ctx.RepositoryInitialized = true
-		vcs.SHOW_ERRORS = false
+		exec.SHOW_ERRORS = false
 		rootCommits := []string{}
 		if rootCommits, err = ctx.VC.GetRootCommits(); err == nil && len(rootCommits) > 0 {
 			ctx.InitialCommitExists = true
 		}
-		fmt.Printf("context: %+v\n", *ctx)
-		fmt.Printf("rootCommits: %v\n", rootCommits)
-		vcs.SHOW_ERRORS = true
+		exec.SHOW_ERRORS = true
 	}
 	return ctx, nil
 }
@@ -222,6 +221,7 @@ func (m *ProjectMenu) checkBranches(ctx *accessor.FinalizationContext) (err erro
 			return err
 		} else {
 			for _, branch := range branches {
+				println("branch: " + branch)
 				if branch == ctx.Workspace.BranchNames["development"] {
 					ctx.DevelopExists = true
 				} else if branch == ctx.Workspace.BranchNames["production"] {
@@ -233,6 +233,7 @@ func (m *ProjectMenu) checkBranches(ctx *accessor.FinalizationContext) (err erro
 			return fmt.Errorf("production branch '%s' wasn't found in '%s'", ctx.Workspace.BranchNames["production"], ctx.Project.Path)
 		}
 	}
+	fmt.Printf("context: %+v\n", *ctx)
 	return nil
 }
 
