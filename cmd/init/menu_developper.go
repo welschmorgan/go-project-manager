@@ -41,7 +41,7 @@ func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 			"Email": ui.NewItemFieldType(ui.ItemFieldText, ""),
 			"Phone": ui.NewItemFieldType(ui.ItemFieldText, ""),
 		},
-		func(item interface{}) error { return nil }); err != nil {
+		nil, true); err != nil {
 		return nil, err
 	} else {
 		return &DevelopperMenu{
@@ -49,6 +49,7 @@ func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 		}, nil
 	}
 }
+
 func (m *DevelopperMenu) Discover() error {
 	for _, project := range m.Workspace.Projects {
 		s := vcs.Get(project.SourceControl)
@@ -69,5 +70,5 @@ func (m *DevelopperMenu) Discover() error {
 			}
 		}
 	}
-	return nil
+	return m.CRUDMenu.Discover()
 }

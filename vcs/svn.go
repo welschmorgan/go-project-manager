@@ -1,8 +1,6 @@
 package vcs
 
 import (
-	"errors"
-
 	"github.com/welschmorgan/go-release-manager/config"
 )
 
@@ -50,9 +48,9 @@ func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 }
 
 func (s *Svn) Initialize(path string, options VersionControlOptions) error {
-	return errors.New("Not yet implemented")
+	return errNotYetImpl
 }
 
 func (s *Svn) Commit(options VersionControlOptions) error {
-	return errors.New("Not yet implemented")
+	return errNotYetImpl
 }

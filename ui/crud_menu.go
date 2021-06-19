@@ -25,7 +25,7 @@ type CRUDMenu struct {
 	Finalizer      func(item interface{}) error
 }
 
-func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType, finalizer func(item interface{}) error) (*CRUDMenu, error) {
+func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType, finalizer func(item interface{}) error, discover bool) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
 		Workspace:      wksp,
 		Key:            key,
@@ -48,17 +48,23 @@ func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}
 			ActionClear.Id:  "Clear items",
 		}
 	}
-	rv := reflect.Indirect(reflect.ValueOf(wksp))
-	rf := rv.FieldByName(key)
-	for i := 0; i < rf.Len(); i++ {
-		menu.Items = append(menu.Items, reflect.Indirect(rf.Index(i)).Interface())
+	menu.SetKey(key)
+	if discover {
+		if err := menu.Discover(); err != nil {
+			return nil, err
+		}
 	}
-	menu.Update()
-	if err := menu.Discover(); err != nil {
-		return nil, err
-	}
-	menu.Update()
 	return menu, nil
+}
+
+func (m *CRUDMenu) SetKey(k string) {
+	m.Key = k
+	rv := reflect.Indirect(reflect.ValueOf(m.Workspace))
+	rf := rv.FieldByName(k)
+	for i := 0; i < rf.Len(); i++ {
+		m.Items = append(m.Items, reflect.Indirect(rf.Index(i)).Interface())
+	}
+	m.Update()
 }
 
 func (m *CRUDMenu) Get(name string) interface{} {
@@ -240,5 +246,6 @@ func (m *CRUDMenu) RenderOnce() error {
 }
 
 func (m *CRUDMenu) Discover() error {
+	m.Update()
 	return nil
 }

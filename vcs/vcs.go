@@ -290,14 +290,16 @@ func Get(n string) VersionControlSoftware {
 func Detect(path string) (VersionControlSoftware, error) {
 	for _, s := range All {
 		ok, err := s.Detect(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %s: %s", path, err.Error())
+		if err != nil && err != errNotYetImpl {
+			if config.Get().Verbose {
+				fmt.Fprintf(os.Stderr, "error: %s: %s: %s\n", path, s.Name(), err.Error())
+			}
 		}
 		if ok {
 			return instanciate(s), nil
 		}
 	}
-	return nil, fmt.Errorf("unknown vcs for folder '%s'", path)
+	return nil, fmt.Errorf("cannot find suitable vcs, tried %v", AllNames)
 }
 
 func Open(path string) (VersionControlSoftware, error) {

@@ -15,6 +15,35 @@ import (
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
 
+const projectMenuItemsKey = "Projects"
+const projectMenuItemsSubKey = "Name"
+
+func projectMenuDefaultItem(w *config.Workspace) *config.Project {
+	return &config.Project{
+		Name: fmt.Sprintf("project %2.2d", rand.Int()),
+		Path: w.GetPath() + "/project",
+	}
+}
+
+var projectMenuActions = []ui.CRUDAction{ui.ActionQuit, ui.ActionAdd, ui.ActionEdit, ui.ActionRemove, ui.ActionClear}
+var projectMenuActionLabels = map[uint8]string{
+	ui.ActionAdd.Id:    "Add new project",
+	ui.ActionEdit.Id:   "Edit existing project",
+	ui.ActionRemove.Id: "Remove existing project",
+	ui.ActionClear.Id:  "Clear projects",
+}
+
+func projectMenuItemFieldTypes(w *config.Workspace) map[string]ui.ItemFieldType {
+	defaultItem := projectMenuDefaultItem(w)
+	return map[string]ui.ItemFieldType{
+		"Type":          ui.NewItemFieldType(ui.ItemFieldList, project.AllNames),
+		"Name":          ui.NewItemFieldType(ui.ItemFieldText, defaultItem.Name),
+		"Path":          ui.NewItemFieldType(ui.ItemFieldText, defaultItem.Path),
+		"Url":           ui.NewItemFieldType(ui.ItemFieldText, defaultItem.Url),
+		"SourceControl": ui.NewItemFieldType(ui.ItemFieldList, vcs.AllNames),
+	}
+}
+
 type ProjectMenu struct {
 	*ui.CRUDMenu
 }
@@ -53,32 +82,21 @@ func validateProject(k, v string) error {
 func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
-		"Projects", "Name", &config.Project{
-			Name: fmt.Sprintf("project %2.2d", rand.Int()),
-			Path: workspace.GetPath() + "/",
-		},
-		[]ui.ObjValidator{
-			validateProject,
-		},
-		[]ui.CRUDAction{ui.ActionQuit, ui.ActionAdd, ui.ActionEdit, ui.ActionRemove, ui.ActionClear},
-		map[uint8]string{
-			ui.ActionAdd.Id:    "Add new project",
-			ui.ActionEdit.Id:   "Edit existing project",
-			ui.ActionRemove.Id: "Remove existing project",
-			ui.ActionClear.Id:  "Clear projects",
-		}, map[string]ui.ItemFieldType{
-			"Type":          ui.NewItemFieldType(ui.ItemFieldList, project.AllNames),
-			"Name":          ui.NewItemFieldType(ui.ItemFieldText, fmt.Sprintf("Project #%d", rand.Int())),
-			"Path":          ui.NewItemFieldType(ui.ItemFieldText, workspace.GetPath()+"/"),
-			"Url":           ui.NewItemFieldType(ui.ItemFieldText, ""),
-			"SourceControl": ui.NewItemFieldType(ui.ItemFieldList, vcs.AllNames),
-		}, nil); err != nil {
+		projectMenuItemsKey, projectMenuItemsSubKey,
+		projectMenuDefaultItem(workspace),
+		[]ui.ObjValidator{validateProject},
+		projectMenuActions,
+		projectMenuActionLabels,
+		projectMenuItemFieldTypes(workspace),
+		nil,
+		false); err != nil {
 		return nil, err
 	} else {
 		m := &ProjectMenu{
 			CRUDMenu: menu,
 		}
 		m.Finalizer = m.FinalizeProject
+		m.Discover()
 		return m, nil
 	}
 }
@@ -91,6 +109,8 @@ func (m *ProjectMenu) FinalizeProject(item interface{}) error {
 				if err := os.MkdirAll(projItem.Path, 0755); err != nil {
 					return err
 				}
+			} else {
+				return nil
 			}
 		} else {
 			return err
@@ -105,15 +125,46 @@ func (m *ProjectMenu) FinalizeProject(item interface{}) error {
 				return err
 			}
 		}
+	} else {
+		fmt.Printf("%s already initialized\n", projItem.SourceControl)
 	}
 	accessor := project.Get(projItem.Type)
 	if ok, err := accessor.Detect(projItem.Path); err != nil || !ok {
+		println("Initializing project " + projItem.Path + "...")
 		if err = accessor.Initialize(projItem.Path, &projItem); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
+	projType := ""
+	for _, p := range m.Workspace.Projects {
+		if p.Path == path {
+			projType = strings.TrimSpace(p.Type)
+			break
+		}
+	}
+	if len(projType) == 0 {
+		for _, n := range project.AllNames {
+			a := project.Get(n)
+			if ok, err := a.Detect(path); err == nil && ok {
+				projType = a.Name()
+				break
+			}
+		}
+	}
+	if len(projType) == 0 {
+		if ans, err := ui.Select("Unknown project type, please pick a type", project.AllNames); err != nil {
+			return "", err
+		} else {
+			projType = ans
+		}
+	}
+	return projType, nil
+}
+
 func (m *ProjectMenu) Discover() error {
 	var cwd string
 	var err error
@@ -124,20 +175,65 @@ func (m *ProjectMenu) Discover() error {
 	if entries, err = os.ReadDir(cwd); err != nil {
 		return err
 	}
+	var knownProject *config.Project = nil
+	var sourceControl vcs.VersionControlSoftware = nil
+	var projFolder = ""
+	var projUrl = ""
+	var projVCS = ""
 	for _, dir := range entries {
 		if dir.IsDir() && !strings.HasPrefix(strings.TrimSpace(dir.Name()), ".") {
-			if sourceControl, err := vcs.Open(filepath.Join(cwd, dir.Name())); err != nil {
-				log.Printf("failed to open folder '%s'", err.Error())
+			knownProject = nil
+			sourceControl = nil
+			projFolder = filepath.Join(cwd, dir.Name())
+			projUrl = ""
+			projVCS = ""
+			// try and find a corresponding workspace project declaration
+			for _, p := range m.Workspace.Projects {
+				if p.Path == projFolder {
+					knownProject = p
+					break
+				}
+			}
+			// if workspace project found, retrieve configured vcs
+			if knownProject != nil {
+				sourceControl = vcs.Get(knownProject.SourceControl)
+			}
+			// detect and open the project using VCS
+			if sourceControl == nil {
+				if sourceControl, err = vcs.Open(projFolder); err != nil {
+					log.Printf("failed to open folder '%s' using %s, %s", projFolder, sourceControl.Name(), err.Error())
+				}
 			} else {
-				if id, ok := m.Indices[dir.Name()]; ok {
-					if err = m.Edit(id, config.NewProject("", dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name())); err != nil {
-						return err
-					}
-				} else {
-					m.Create(config.NewProject("", dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
+				if err = sourceControl.Open(projFolder); err != nil {
+					log.Printf("failed to open folder '%s' using %s, %s", projFolder, sourceControl.Name(), err.Error())
+				}
+			}
+			// extract url and source control name from detected VCS
+			if sourceControl != nil {
+				projUrl = sourceControl.Url()
+				projVCS = sourceControl.Name()
+			}
+			// find project accessor
+			projType := ""
+			if projType, err = m.DetectProjectAccessor(projFolder); err != nil {
+				return err
+			}
+			// create new entry
+			newItem := *config.NewProject(projType, dir.Name(), projFolder, projUrl, projVCS)
+			if knownProject != nil {
+				newItem.Name = knownProject.Name
+				newItem.Path = knownProject.Path
+			}
+			if id, ok := m.Indices[newItem.Name]; ok {
+				if err = m.Edit(id, newItem); err != nil {
+					return err
+				}
+			} else {
+				if err := m.Create(newItem); err != nil {
+					return err
 				}
 			}
 		}
 	}
-	return nil
+	return m.CRUDMenu.Discover()
 }
