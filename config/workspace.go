@@ -22,9 +22,11 @@ type Workspace struct {
 }
 
 func NewWorkspace() *Workspace {
+	path := DefaultWorkspacesRoot
+	name := fmt.Sprintf("workspace %5d", rand.Int())
 	return &Workspace{
-		Name:        fmt.Sprintf("workspace %d", rand.Int()),
-		Path:        DefaultWorkspacesRoot,
+		Name:        name,
+		Path:        path,
 		Projects:    []*Project{},
 		Author:      nil,
 		Manager:     nil,

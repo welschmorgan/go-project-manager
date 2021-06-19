@@ -112,4 +112,9 @@ func initConfig() {
 			fmt.Printf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
 		}
 	}
+
+	if len(config.Get().WorkingDirectory) != 0 {
+		config.Get().Workspace.Path = config.Get().WorkingDirectory
+		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.Path)
+	}
 }
