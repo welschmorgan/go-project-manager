@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 
+	"github.com/welschmorgan/go-release-manager/fs"
 	"gopkg.in/yaml.v2"
 )
 
@@ -12,7 +13,7 @@ type BranchNamesConfig map[string]string
 
 type Workspace struct {
 	Name               string            `yaml:"name"`
-	Path               string            `yaml:"path"`
+	path               string            `yaml:"path"`
 	Projects           []*Project        `yaml:"projects"`
 	Author             *Person           `yaml:"author"`
 	Manager            *Person           `yaml:"manager"`
@@ -26,7 +27,7 @@ func NewWorkspace() *Workspace {
 	name := fmt.Sprintf("workspace %5d", rand.Int())
 	return &Workspace{
 		Name:        name,
-		Path:        path,
+		path:        path,
 		Projects:    []*Project{},
 		Author:      nil,
 		Manager:     nil,
@@ -43,7 +44,7 @@ func NewWorkspace() *Workspace {
 func NewWorkspaceWithValues(name, path string, projects []*Project, sourceControl string, author *Person, manager *Person, developpers []*Person, branchNames BranchNamesConfig, acquireVersionFrom string) *Workspace {
 	return &Workspace{
 		Name:               name,
-		Path:               path,
+		path:               path,
 		Projects:           projects,
 		Author:             author,
 		Manager:            manager,
@@ -80,4 +81,13 @@ func (w *Workspace) WriteFile(path string) error {
 
 func (w *Workspace) Write() ([]byte, error) {
 	return yaml.Marshal(w)
+}
+
+func (w *Workspace) GetPath() string {
+	return w.path
+}
+
+func (w *Workspace) SetPath(p string) {
+	w.path = p
+	fs.SanitizePath(w.path)
 }

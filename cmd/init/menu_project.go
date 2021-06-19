@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,7 @@ func validateProject(k, v string) error {
 			return err
 		}
 	case "Url":
-		return ui.StrMustBeNonEmpty(v)
+		return nil
 	case "SourceControl":
 		if err := ui.StrMustBeNonEmpty(v); err != nil {
 			return err
@@ -49,7 +50,10 @@ func validateProject(k, v string) error {
 func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
-		"Projects", "Name", &config.Project{},
+		"Projects", "Name", &config.Project{
+			Name: fmt.Sprintf("project %2.2d", rand.Int()),
+			Path: workspace.GetPath() + "/",
+		},
 		[]ui.ObjValidator{
 			validateProject,
 		},

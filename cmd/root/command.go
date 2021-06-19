@@ -114,7 +114,7 @@ func initConfig() {
 	}
 
 	if len(config.Get().WorkingDirectory) != 0 {
-		config.Get().Workspace.Path = config.Get().WorkingDirectory
-		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.Path)
+		config.Get().Workspace.SetPath(config.Get().WorkingDirectory)
+		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.GetPath())
 	}
 }
