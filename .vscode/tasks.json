@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "go:run",
+      "label": "init",
       "type": "shell",
       "command": "make re && ./grlm init -C /tmp/test-wksp",
       "options": {
@@ -15,7 +15,30 @@
       ],
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
+      "label": "release",
+      "type": "shell",
+      "command": "make re && ./grlm release -C /tmp/test-wksp",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
       },
       "presentation": {
         "echo": true,

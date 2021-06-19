@@ -37,6 +37,12 @@ type CloneOptions struct {
 	Branch   string
 	Insecure bool
 }
+type CommitOptions struct {
+	Signed     bool
+	Message    string
+	AllowEmpty bool
+	StageFiles bool
+}
 type CheckoutOptions struct {
 	VersionControlOptions
 	CreateBranch     bool
@@ -132,6 +138,9 @@ type VersionControlSoftware interface {
 
 	// Clone a remote repository
 	Clone(url, path string, options VersionControlOptions) error
+
+	// Create a new commit
+	Commit(options VersionControlOptions) error
 
 	// Get the working tree status (dirty / clean)
 	Status(options VersionControlOptions) ([]string, error)

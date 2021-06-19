@@ -52,3 +52,7 @@ func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 func (s *Svn) Initialize(path string, options VersionControlOptions) error {
 	return errors.New("Not yet implemented")
 }
+
+func (s *Svn) Commit(options VersionControlOptions) error {
+	return errors.New("Not yet implemented")
+}

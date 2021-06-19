@@ -2,96 +2,67 @@ package maven
 
 import (
 	"encoding/xml"
-	"fmt"
 	"os"
 )
 
-type POMFile map[string]interface{}
+type POMDependency struct {
+	GroupId    string `xml:"groupId"`
+	ArtifactId string `xml:"artifactId"`
+	Version    string `xml:"version"`
+	Scope      string `xml:"scope"`
+}
 
-func (p POMFile) getValue(k string) (interface{}, error) {
-	if v, ok := p[k]; !ok {
-		return nil, fmt.Errorf("no '%s' key found in package", k)
-	} else {
-		return v, nil
+type POMProject struct {
+	Xmlns             string `xml:"xmlns,attr"`
+	XmlnsXsi          string `xml:"xmlns:xsi,attr"`
+	XsiSchemaLocation string `xml:"xsi:schemaLocation,attr"`
+
+	ModelVersion string                   `xml:"modelVersion"`
+	GroupId      string                   `xml:"groupId"`
+	ArtifactId   string                   `xml:"artifactId"`
+	Version      string                   `xml:"version"`
+	Properties   map[string]string        `xml:"properties"`
+	Dependencies map[string]POMDependency `xml:"dependencies"`
+}
+
+type POMFile struct {
+	Root *POMProject `xml:"project"`
+}
+
+func NewPOMFile(modelVersion string) POMFile {
+	return POMFile{
+		Root: &POMProject{
+			Xmlns:             "http://maven.apache.org/POM/" + modelVersion,
+			XmlnsXsi:          "http://www.w3.org/2001/XMLSchema-instance",
+			XsiSchemaLocation: "http://maven.apache.org/POM/" + modelVersion + " http://maven.apache.org/xsd/maven-" + modelVersion + ".xsd",
+			ModelVersion:      modelVersion,
+			Properties: map[string]string{
+				"maven.compiler.source": "1.8",
+				"maven.compiler.target": "1.8",
+			},
+		},
 	}
 }
 
-func (p POMFile) Name() (string, error) {
-	if v, err := p.getValue("name"); err != nil {
-		return "", err
+func (p POMFile) Write(b []byte) error {
+	if data, err := xml.MarshalIndent(&p, "", "  "); err != nil {
+		return err
 	} else {
-		return v.(string), nil
+		copy(data, b)
 	}
-}
-func (p POMFile) Author() (string, error) {
-	if v, err := p.getValue("author"); err != nil {
-		return "", err
-	} else {
-		return v.(string), nil
-	}
-}
-
-func (p POMFile) Description() (string, error) {
-	if v, err := p.getValue("description"); err != nil {
-		return "", err
-	} else {
-		return v.(string), nil
-	}
-}
-
-func (p POMFile) Contributors() (string, error) {
-	if v, err := p.getValue("contributors"); err != nil {
-		return "", err
-	} else {
-		return v.(string), nil
-	}
-}
-
-func (p POMFile) Maintainers() (string, error) {
-	if v, err := p.getValue("maintainers"); err != nil {
-		return "", err
-	} else {
-		return v.(string), nil
-	}
-}
-
-func (p POMFile) Version() (string, error) {
-	if v, err := p.getValue("version"); err != nil {
-		return "", err
-	} else {
-		return v.(string), nil
-	}
-}
-
-func (p POMFile) Scripts() (map[string]string, error) {
-	if v, err := p.getValue("scripts"); err != nil {
-		return nil, err
-	} else {
-		return v.(map[string]string), nil
-	}
-}
-
-func (p POMFile) Dependencies() (map[string]string, error) {
-	if v, err := p.getValue("dependencies"); err != nil {
-		return nil, err
-	} else {
-		return v.(map[string]string), nil
-	}
-}
-
-func (p POMFile) DevDependencies() (map[string]string, error) {
-	if v, err := p.getValue("devDependencies"); err != nil {
-		return nil, err
-	} else {
-		return v.(map[string]string), nil
-	}
+	return nil
 }
 
 func (p POMFile) Read(b []byte) error {
-	if err := xml.Unmarshal(b, &p); err != nil {
+	return xml.Unmarshal(b, &p)
+}
+
+func (p POMFile) WriteFile(fname string) error {
+	xml := []byte{}
+	if err := p.Write(xml); err != nil {
 		return err
 	}
-	return nil
+	return os.WriteFile(fname, xml, 0755)
 }
 
 func (p POMFile) ReadFile(fname string) error {

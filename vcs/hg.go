@@ -53,3 +53,6 @@ func (h *Hg) ListTags(options VersionControlOptions) ([]string, error) {
 func (h *Hg) Initialize(path string, options VersionControlOptions) error {
 	return errors.New("Not yet implemented")
 }
+func (h *Hg) Commit(options VersionControlOptions) error {
+	return errors.New("Not yet implemented")
+}

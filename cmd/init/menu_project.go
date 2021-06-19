@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/project"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
@@ -20,6 +21,8 @@ type ProjectMenu struct {
 
 func validateProject(k, v string) error {
 	switch k {
+	case "Type":
+		return ui.StrMustBeNonEmpty(v)
 	case "Name":
 		return ui.StrMustBeNonEmpty(v)
 	case "Path":
@@ -64,38 +67,52 @@ func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 			ui.ActionRemove.Id: "Remove existing project",
 			ui.ActionClear.Id:  "Clear projects",
 		}, map[string]ui.ItemFieldType{
+			"Type":          ui.NewItemFieldType(ui.ItemFieldList, project.AllNames),
 			"Name":          ui.NewItemFieldType(ui.ItemFieldText, fmt.Sprintf("Project #%d", rand.Int())),
 			"Path":          ui.NewItemFieldType(ui.ItemFieldText, workspace.GetPath()+"/"),
 			"Url":           ui.NewItemFieldType(ui.ItemFieldText, ""),
 			"SourceControl": ui.NewItemFieldType(ui.ItemFieldList, vcs.AllNames),
-		}, func(item interface{}) error {
-			project := item.(config.Project)
-			if fi, err := os.Stat(project.Path); err != nil {
-				if os.IsNotExist(err) {
-					if createFolder, _ := ui.AskYN("Project folder does not exist, do you want to create it"); createFolder {
-						if err := os.MkdirAll(project.Path, 0755); err != nil {
-							return err
-						}
-					}
-				} else {
-					return err
-				}
-			} else if !fi.IsDir() {
-				return fmt.Errorf("%s: not a directory", project.Path)
-			}
-			if initGit, _ := ui.AskYN(project.SourceControl + " not initialized, do it now"); initGit {
-				if _, err := vcs.Initialize(project.SourceControl, project.Path, nil); err != nil {
-					return err
-				}
-			}
-			return nil
-		}); err != nil {
+		}, nil); err != nil {
 		return nil, err
 	} else {
-		return &ProjectMenu{
+		m := &ProjectMenu{
 			CRUDMenu: menu,
-		}, nil
+		}
+		m.Finalizer = m.FinalizeProject
+		return m, nil
 	}
+}
+
+func (m *ProjectMenu) FinalizeProject(item interface{}) error {
+	projItem := item.(config.Project)
+	if fi, err := os.Stat(projItem.Path); err != nil {
+		if os.IsNotExist(err) {
+			if createFolder, _ := ui.AskYN("Project folder does not exist, do you want to create it"); createFolder {
+				if err := os.MkdirAll(projItem.Path, 0755); err != nil {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	} else if !fi.IsDir() {
+		return fmt.Errorf("%s: not a directory", projItem.Path)
+	}
+	v := vcs.Get(projItem.SourceControl)
+	if ok, err := v.Detect(projItem.Path); err != nil || !ok {
+		if initGit, _ := ui.AskYN(projItem.SourceControl + " not initialized, do it now"); initGit {
+			if err = v.Initialize(projItem.Path, nil); err != nil {
+				return err
+			}
+		}
+	}
+	accessor := project.Get(projItem.Type)
+	if ok, err := accessor.Detect(projItem.Path); err != nil || !ok {
+		if err = accessor.Initialize(projItem.Path, &projItem); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func (m *ProjectMenu) Discover() error {
 	var cwd string
@@ -113,11 +130,11 @@ func (m *ProjectMenu) Discover() error {
 				log.Printf("failed to open folder '%s'", err.Error())
 			} else {
 				if id, ok := m.Indices[dir.Name()]; ok {
-					if err = m.Edit(id, config.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name())); err != nil {
+					if err = m.Edit(id, config.NewProject("", dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name())); err != nil {
 						return err
 					}
 				} else {
-					m.Create(config.NewProject(dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
+					m.Create(config.NewProject("", dir.Name(), sourceControl.Path(), sourceControl.Url(), sourceControl.Name()))
 				}
 			}
 		}

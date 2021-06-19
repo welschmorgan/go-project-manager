@@ -15,6 +15,13 @@ var All []accessor.ProjectAccessor = []accessor.ProjectAccessor{
 	&node.ProjectAccessor{},
 	&maven.ProjectAccessor{},
 }
+var AllNames = []string{}
+
+func init() {
+	for _, a := range All {
+		AllNames = append(AllNames, a.Name())
+	}
+}
 
 func instanciate(a accessor.ProjectAccessor) accessor.ProjectAccessor {
 	inst := reflect.New(reflect.TypeOf(a).Elem())

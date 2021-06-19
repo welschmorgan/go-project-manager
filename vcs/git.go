@@ -500,3 +500,38 @@ func (g *Git) Initialize(path string, options VersionControlOptions) error {
 	dumpCommandErrors(code, errTxt)
 	return err
 }
+
+func (g *Git) Commit(options VersionControlOptions) error {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	var err error
+	var opts CommitOptions
+	if ret, err := getOptions(options, CommitOptions{
+		Signed:     false,
+		Message:    "",
+		AllowEmpty: false,
+		StageFiles: false,
+	}); err != nil {
+		return err
+	} else {
+		opts = ret.(CommitOptions)
+	}
+	args := []string{
+		"commit",
+	}
+	if opts.StageFiles {
+		args = append(args, "-a")
+	}
+	if opts.AllowEmpty {
+		args = append(args, "--allow-empty")
+	}
+	if len(opts.Message) > 0 {
+		args = append(args, "-m", opts.Message)
+	}
+	if opts.Signed {
+		args = append(args, "-S")
+	}
+	code, _, errTxt, err := runCommand("git", args...)
+	dumpCommandErrors(code, errTxt)
+	return err
+}
