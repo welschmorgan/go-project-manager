@@ -30,6 +30,9 @@ func getOptions(options, defaults VersionControlOptions) (VersionControlOptions,
 	return options, nil
 }
 
+type InitOptions struct {
+	Bare bool
+}
 type CloneOptions struct {
 	Branch   string
 	Insecure bool
@@ -123,6 +126,9 @@ type VersionControlSoftware interface {
 
 	// Open a local repository, loading infos
 	Open(path string) error
+
+	// Initialize a new repository
+	Initialize(path string, options VersionControlOptions) error
 
 	// Clone a remote repository
 	Clone(url, path string, options VersionControlOptions) error
@@ -294,4 +300,9 @@ func Open(path string) (VersionControlSoftware, error) {
 		}
 		return vc, nil
 	}
+}
+
+func Initialize(n, p string, options VersionControlOptions) (VersionControlSoftware, error) {
+	v := Get(n)
+	return v, v.Initialize(p, options)
 }

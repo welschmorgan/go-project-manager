@@ -12,9 +12,12 @@ func askAuthor(wksp *config.Workspace) error {
 	var currentUser *user.User
 	var err error
 	var defaultAuthor *config.Person = wksp.Author
-	if defaultAuthor != nil && len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
+	if defaultAuthor == nil || len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
 		if currentUser, err = user.Current(); err != nil {
 			return err
+		}
+		if defaultAuthor == nil {
+			defaultAuthor = &config.Person{}
 		}
 		defaultAuthor.Name = currentUser.Name
 		if len(strings.TrimSpace(defaultAuthor.Name)) == 0 {

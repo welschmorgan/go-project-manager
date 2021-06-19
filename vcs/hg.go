@@ -1,6 +1,8 @@
 package vcs
 
 import (
+	"errors"
+
 	"github.com/welschmorgan/go-release-manager/config"
 )
 
@@ -46,4 +48,8 @@ func (h *Hg) Reset(options VersionControlOptions) error {
 }
 func (h *Hg) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
+}
+
+func (h *Hg) Initialize(path string, options VersionControlOptions) error {
+	return errors.New("Not yet implemented")
 }

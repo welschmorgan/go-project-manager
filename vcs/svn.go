@@ -1,6 +1,10 @@
 package vcs
 
-import "github.com/welschmorgan/go-release-manager/config"
+import (
+	"errors"
+
+	"github.com/welschmorgan/go-release-manager/config"
+)
 
 type Svn struct {
 	VersionControlSoftware
@@ -43,4 +47,8 @@ func (s *Svn) Reset(options VersionControlOptions) error {
 }
 func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
+}
+
+func (s *Svn) Initialize(path string, options VersionControlOptions) error {
+	return errors.New("Not yet implemented")
 }

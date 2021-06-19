@@ -476,3 +476,27 @@ func (g *Git) ListTags(options VersionControlOptions) ([]string, error) {
 	}
 	return out, nil
 }
+
+func (g *Git) Initialize(path string, options VersionControlOptions) error {
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	var err error
+	var opts InitOptions
+	if ret, err := getOptions(options, InitOptions{
+		Bare: false,
+	}); err != nil {
+		return err
+	} else {
+		opts = ret.(InitOptions)
+	}
+	args := []string{
+		"init",
+	}
+	if opts.Bare {
+		args = append(args, "--bare")
+	}
+	args = append(args, path)
+	code, _, errTxt, err := runCommand("git", args...)
+	dumpCommandErrors(code, errTxt)
+	return err
+}

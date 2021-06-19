@@ -22,9 +22,10 @@ type CRUDMenu struct {
 	ItemFieldTypes map[string]ItemFieldType
 	Names          []string
 	Indices        map[string]int
+	Finalizer      func(item interface{}) error
 }
 
-func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType) (*CRUDMenu, error) {
+func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType, finalizer func(item interface{}) error) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
 		Workspace:      wksp,
 		Key:            key,
@@ -37,6 +38,7 @@ func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}
 		ItemFieldTypes: itemFieldTypes,
 		Names:          make([]string, 0),
 		Indices:        map[string]int{},
+		Finalizer:      finalizer,
 	}
 	if menu.ActionLabels == nil || len(menu.ActionLabels) == 0 {
 		menu.ActionLabels = map[uint8]string{
@@ -71,14 +73,26 @@ func (m *CRUDMenu) Edit(id int, newItem interface{}) error {
 	if id < 0 || id >= len(m.Items) {
 		return errors.New("invalid project")
 	}
+	if m.Finalizer != nil {
+		if err := m.Finalizer(newItem); err != nil {
+			return err
+		}
+	}
 	m.Items[id] = newItem
 	m.Update()
 	return nil
 }
 
-func (m *CRUDMenu) Create(newItem interface{}) {
-	m.Items = append(m.Items, reflect.Indirect(reflect.ValueOf(newItem)).Interface())
+func (m *CRUDMenu) Create(newItem interface{}) error {
+	v := reflect.Indirect(reflect.ValueOf(newItem)).Interface()
+	if m.Finalizer != nil {
+		if err := m.Finalizer(v); err != nil {
+			return err
+		}
+	}
+	m.Items = append(m.Items, v)
 	m.Update()
+	return nil
 }
 
 func (m *CRUDMenu) Remove(name string) {
@@ -208,7 +222,9 @@ func (m *CRUDMenu) RenderOnce() error {
 				return err
 			}
 		} else if action == ActionAdd {
-			m.Create(res)
+			if err := m.Create(res); err != nil {
+				return err
+			}
 		}
 	}
 	if action == ActionRemove {

@@ -64,10 +64,31 @@ func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 			ui.ActionRemove.Id: "Remove existing project",
 			ui.ActionClear.Id:  "Clear projects",
 		}, map[string]ui.ItemFieldType{
-			"Name":          ui.NewItemFieldType(ui.ItemFieldText, ""),
-			"Path":          ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Name":          ui.NewItemFieldType(ui.ItemFieldText, fmt.Sprintf("Project #%d", rand.Int())),
+			"Path":          ui.NewItemFieldType(ui.ItemFieldText, workspace.GetPath()+"/"),
 			"Url":           ui.NewItemFieldType(ui.ItemFieldText, ""),
 			"SourceControl": ui.NewItemFieldType(ui.ItemFieldList, vcs.AllNames),
+		}, func(item interface{}) error {
+			project := item.(config.Project)
+			if fi, err := os.Stat(project.Path); err != nil {
+				if os.IsNotExist(err) {
+					if createFolder, _ := ui.AskYN("Project folder does not exist, do you want to create it"); createFolder {
+						if err := os.MkdirAll(project.Path, 0755); err != nil {
+							return err
+						}
+					}
+				} else {
+					return err
+				}
+			} else if !fi.IsDir() {
+				return fmt.Errorf("%s: not a directory", project.Path)
+			}
+			if initGit, _ := ui.AskYN(project.SourceControl + " not initialized, do it now"); initGit {
+				if _, err := vcs.Initialize(project.SourceControl, project.Path, nil); err != nil {
+					return err
+				}
+			}
+			return nil
 		}); err != nil {
 		return nil, err
 	} else {
