@@ -6,7 +6,7 @@
     {
       "label": "init",
       "type": "shell",
-      "command": "make re && ./grlm init -C /tmp/test-wksp",
+      "command": "make re && ./grlm init -C /tmp/test-wksp -v",
       "options": {
         "cwd": "${workspaceFolder}"
       },

@@ -10,11 +10,11 @@ type Hg struct {
 	url  string
 }
 
-func (h *Hg) Name() string                     { return "Hg" }
-func (h *Hg) Path() string                     { return h.path }
-func (h *Hg) Url() string                      { return h.url }
-func (h *Hg) Detect(path string) (bool, error) { return false, errNotYetImpl }
-func (h *Hg) Open(p string) error              { return errNotYetImpl }
+func (h *Hg) Name() string             { return "Hg" }
+func (h *Hg) Path() string             { return h.path }
+func (h *Hg) Url() string              { return h.url }
+func (h *Hg) Detect(path string) error { return errNotYetImpl }
+func (h *Hg) Open(p string) error      { return errNotYetImpl }
 func (h *Hg) Clone(url, path string, options VersionControlOptions) error {
 	return errNotYetImpl
 }
@@ -53,4 +53,13 @@ func (h *Hg) Initialize(path string, options VersionControlOptions) error {
 }
 func (h *Hg) Commit(options VersionControlOptions) error {
 	return errNotYetImpl
+}
+
+func (h *Hg) Stage(options VersionControlOptions) error {
+	return errNotYetImpl
+}
+
+// Retrieve commits without parents
+func (h *Hg) GetRootCommits() ([]string, error) {
+	return nil, errNotYetImpl
 }

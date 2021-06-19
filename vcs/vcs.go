@@ -4,118 +4,22 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/welschmorgan/go-release-manager/config"
 )
 
 var (
 	errNotYetImpl = errors.New("not yet implemented")
+	SHOW_ERRORS   = true
+	TRACE         = true
 )
-
-type VersionControlOptions interface{}
-
-func getOptions(options, defaults VersionControlOptions) (VersionControlOptions, error) {
-	if options == nil {
-		return defaults, nil
-	}
-	optType := reflect.TypeOf(options)
-	defType := reflect.TypeOf(defaults)
-	if defType.Name() != optType.Name() {
-		return nil, fmt.Errorf("options are of wrong type, expected %s but got %s", defType.Name(), optType.Name())
-	}
-	return options, nil
-}
-
-type InitOptions struct {
-	Bare bool
-}
-type CloneOptions struct {
-	Branch   string
-	Insecure bool
-}
-type CommitOptions struct {
-	Signed     bool
-	Message    string
-	AllowEmpty bool
-	StageFiles bool
-}
-type CheckoutOptions struct {
-	VersionControlOptions
-	CreateBranch     bool
-	UpdateIfExisting bool
-	StartingPoint    string
-}
-
-type PullOptions struct {
-	VersionControlOptions
-	Force    bool
-	All      bool
-	ListTags bool
-}
-
-type PushOptions struct {
-	VersionControlOptions
-	Force bool
-	All   bool
-}
-
-type MergeOptions struct {
-	VersionControlOptions
-	NoFastForward   bool
-	FastForwardOnly bool
-}
-
-type StatusOptions struct {
-	VersionControlOptions
-	Short bool
-}
-
-type StashOptions struct {
-	VersionControlOptions
-	Save             bool
-	List             bool
-	Apply            bool
-	Pop              bool
-	IncludeUntracked bool
-	Message          string
-}
-
-type BranchOptions struct {
-	VersionControlOptions
-	All           bool
-	Verbose       bool
-	SetUpstreamTo string
-}
-
-type ListTagsOptions struct {
-	VersionControlOptions
-	SortByTaggerDate    bool
-	SortByCommitterDate bool
-}
-
-type TagOptions struct {
-	VersionControlOptions
-	Delete    bool
-	Annotated bool
-	Message   string
-	Commit    string
-}
-
-type ResetOptions struct {
-	VersionControlOptions
-	Hard   bool
-	Commit string
-}
-type DeleteBranchOptions struct {
-	VersionControlOptions
-	Local      bool
-	Remote     bool
-	RemoteName string
-}
 
 type VersionControlSoftware interface {
 	// Retrieve the name of this vcs
@@ -128,7 +32,7 @@ type VersionControlSoftware interface {
 	Url() string
 
 	// Detect if a given path can be handled by this VCS
-	Detect(path string) (bool, error)
+	Detect(path string) error
 
 	// Open a local repository, loading infos
 	Open(path string) error
@@ -138,6 +42,12 @@ type VersionControlSoftware interface {
 
 	// Clone a remote repository
 	Clone(url, path string, options VersionControlOptions) error
+
+	// Add files to index
+	Stage(options VersionControlOptions) error
+
+	// Retrieve commits without parents
+	GetRootCommits() ([]string, error)
 
 	// Create a new commit
 	Commit(options VersionControlOptions) error
@@ -186,14 +96,14 @@ type VersionControlSoftware interface {
 }
 
 // Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
-func runCommand(name string, args ...string) (exitCode int, stdout []string, stderr []string, error error) {
-	var bufStdout bytes.Buffer
-	var bufStderr bytes.Buffer
-	if config.Get().Verbose || config.Get().DryRun {
+func RunCommand(name string, args ...string) (exitCode int, stdout []string, stderr []string, error error) {
+	var bufStdout *bytes.Buffer = bytes.NewBufferString("")
+	var bufStderr *bytes.Buffer = bytes.NewBufferString("")
+	if TRACE || config.Get().Verbose || config.Get().DryRun {
 		argStr := ""
 		for _, a := range args {
 			if len(argStr) > 0 {
-				argStr += ", "
+				argStr += " "
 			}
 			argStr += fmt.Sprintf("%q", a)
 		}
@@ -203,13 +113,43 @@ func runCommand(name string, args ...string) (exitCode int, stdout []string, std
 	var errs []string
 	if !config.Get().DryRun {
 		cmd := exec.Command(name, args...)
-		cmd.Stderr = &bufStderr
-		cmd.Stdout = &bufStdout
-		if err := cmd.Run(); err != nil {
-			return cmd.ProcessState.ExitCode(), nil, strings.Split(bufStderr.String(), "\n"), err
+		stdout, _ := cmd.StdoutPipe()
+		stderr, _ := cmd.StderrPipe()
+
+		if err := cmd.Start(); err != nil {
+			log.Printf("Error executing command: %s......\n", err.Error())
+			return -1, nil, nil, err
 		}
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			io.Copy(os.Stdout, stdout)
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			io.Copy(os.Stderr, stderr)
+		}()
+
+		wg.Wait()
+
+		if err := cmd.Wait(); err != nil {
+			if !cmd.ProcessState.Exited() {
+				log.Printf("Failed to wait for command, killing now... %v", cmd.Process.Kill())
+				return -1, nil, nil, err
+			}
+		}
+
 		exitCode = cmd.ProcessState.ExitCode()
 		lines := map[string]bool{}
+		io.Copy(bufStdout, stdout)
+		io.Copy(bufStderr, stderr)
+		defer stdout.Close()
+		defer stderr.Close()
 		for line, err := bufStdout.ReadString('\n'); err == nil; line, err = bufStdout.ReadString('\n') {
 			line = strings.TrimSpace(line)
 			if ok := lines[line]; !ok {
@@ -224,7 +164,7 @@ func runCommand(name string, args ...string) (exitCode int, stdout []string, std
 	return exitCode, ret, errs, nil
 }
 
-func dumpCommandErrors(exitCode int, errs []string) {
+func DumpCommandErrors(exitCode int, errs []string) {
 	level := ""
 	color := ""
 	indent := strings.Repeat("\t", config.Get().Indent)
@@ -239,7 +179,7 @@ func dumpCommandErrors(exitCode int, errs []string) {
 	if !shouldPrint {
 		return
 	}
-	if len(errs) > 0 {
+	if SHOW_ERRORS && len(errs) > 0 {
 		if len(errs) == 1 {
 			fmt.Fprintf(os.Stderr, "%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
 		} else {
@@ -289,13 +229,11 @@ func Get(n string) VersionControlSoftware {
 
 func Detect(path string) (VersionControlSoftware, error) {
 	for _, s := range All {
-		ok, err := s.Detect(path)
-		if err != nil && err != errNotYetImpl {
+		if err := s.Detect(path); err != nil && err != errNotYetImpl {
 			if config.Get().Verbose {
 				fmt.Fprintf(os.Stderr, "error: %s: %s: %s\n", path, s.Name(), err.Error())
 			}
-		}
-		if ok {
+		} else {
 			return instanciate(s), nil
 		}
 	}

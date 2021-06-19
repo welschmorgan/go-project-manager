@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
-	"github.com/welschmorgan/go-release-manager/project"
+	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
@@ -36,7 +36,7 @@ var projectMenuActionLabels = map[uint8]string{
 func projectMenuItemFieldTypes(w *config.Workspace) map[string]ui.ItemFieldType {
 	defaultItem := projectMenuDefaultItem(w)
 	return map[string]ui.ItemFieldType{
-		"Type":          ui.NewItemFieldType(ui.ItemFieldList, project.AllNames),
+		"Type":          ui.NewItemFieldType(ui.ItemFieldList, accessor.GetAllNames()),
 		"Name":          ui.NewItemFieldType(ui.ItemFieldText, defaultItem.Name),
 		"Path":          ui.NewItemFieldType(ui.ItemFieldText, defaultItem.Path),
 		"Url":           ui.NewItemFieldType(ui.ItemFieldText, defaultItem.Url),
@@ -96,17 +96,91 @@ func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 			CRUDMenu: menu,
 		}
 		m.Finalizer = m.FinalizeProject
-		m.Discover()
+		if err = m.Discover(); err != nil {
+			return nil, err
+		}
 		return m, nil
 	}
 }
 
-func (m *ProjectMenu) FinalizeProject(item interface{}) error {
-	projItem := item.(config.Project)
-	if fi, err := os.Stat(projItem.Path); err != nil {
+func (m *ProjectMenu) CreateFinalizationContext(workspace *config.Workspace, proj *config.Project) (*accessor.FinalizationContext, error) {
+	if len(proj.Type) == 0 {
+		if ans, err := ui.Select("What type of project is it", accessor.GetAllNames()); err != nil {
+			return nil, err
+		} else {
+			proj.Type = ans
+		}
+	}
+	a := accessor.Get(proj.Type)
+	a.Open(proj.Path)
+	v := vcs.Get(proj.SourceControl)
+	ctx := accessor.NewFinalizationContext(v, a, proj, workspace)
+	if err := v.Detect(proj.Path); err == nil {
+		ctx.RepositoryInitialized = true
+		vcs.SHOW_ERRORS = false
+		rootCommits := []string{}
+		if rootCommits, err = ctx.VC.GetRootCommits(); err == nil && len(rootCommits) > 0 {
+			ctx.InitialCommitExists = true
+		}
+		fmt.Printf("context: %+v\n", *ctx)
+		fmt.Printf("rootCommits: %v\n", rootCommits)
+		vcs.SHOW_ERRORS = true
+	}
+	return ctx, nil
+}
+
+func (m *ProjectMenu) FinalizeProject(workspace *config.Workspace, item interface{}) error {
+	var err error
+	var ctx *accessor.FinalizationContext
+	proj := item.(config.Project)
+	if ctx, err = m.CreateFinalizationContext(workspace, &proj); err != nil {
+		return err
+	}
+	if err = m.createProjectFolder(ctx); err != nil {
+		return err
+	}
+	if err = m.initializeVCS(ctx); err != nil {
+		return err
+	}
+	if ctx.RepositoryInitialized {
+		if err = m.checkBranches(ctx); err != nil {
+			return err
+		}
+		if ctx.InitialCommitExists {
+			var checkoutOpts vcs.VersionControlOptions = nil
+
+			if !ctx.DevelopExists {
+				checkoutOpts = vcs.CheckoutOptions{
+					CreateBranch:  true,
+					StartingPoint: workspace.BranchNames["production"],
+				}
+			}
+			if err = ctx.VC.Checkout(workspace.BranchNames["development"], checkoutOpts); err != nil {
+				return err
+			}
+			ctx.DevelopExists = true
+		}
+	}
+	a := accessor.Get(ctx.Project.Type)
+	if err = a.Scaffold(ctx); err != nil {
+		return err
+	}
+	if ctx.InitialCommitExists && !ctx.DevelopExists {
+		if err = ctx.VC.Checkout(workspace.BranchNames["development"], vcs.CheckoutOptions{
+			CreateBranch:  true,
+			StartingPoint: workspace.BranchNames["production"],
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *ProjectMenu) createProjectFolder(ctx *accessor.FinalizationContext) error {
+	if fi, err := os.Stat(ctx.Project.Path); err != nil {
 		if os.IsNotExist(err) {
-			if createFolder, _ := ui.AskYN("Project folder does not exist, do you want to create it"); createFolder {
-				if err := os.MkdirAll(projItem.Path, 0755); err != nil {
+			if ctx.UserWantsFolderCreation, _ = ui.AskYN("Project folder does not exist, do you want to create it"); ctx.UserWantsFolderCreation {
+				if err := os.MkdirAll(ctx.Project.Path, 0755); err != nil {
 					return err
 				}
 			} else {
@@ -116,35 +190,47 @@ func (m *ProjectMenu) FinalizeProject(item interface{}) error {
 			return err
 		}
 	} else if !fi.IsDir() {
-		return fmt.Errorf("%s: not a directory", projItem.Path)
+		return fmt.Errorf("%s: not a directory", ctx.Project.Path)
 	}
-	v := vcs.Get(projItem.SourceControl)
-	if v == nil {
-		return fmt.Errorf("%s: unknown vcs", projItem.SourceControl)
-	}
-	vcsFirstInit := false
-	if ok, err := v.Detect(projItem.Path); err != nil || !ok {
-		vcsFirstInit = true
-		if initGit, _ := ui.AskYN(projItem.SourceControl + " not initialized, do it now"); initGit {
-			if err = v.Initialize(projItem.Path, nil); err != nil {
+	return nil
+}
+
+func (m *ProjectMenu) initializeVCS(ctx *accessor.FinalizationContext) (err error) {
+	if !ctx.RepositoryInitialized {
+		if ctx.UserWantsVCSInit, _ = ui.AskYN(ctx.Project.SourceControl + " not initialized, do it now"); ctx.UserWantsVCSInit {
+			if err = ctx.VC.Initialize(ctx.Project.Path, nil); err != nil {
 				return err
 			}
+			ctx.RepositoryInitialized = true
+		} else {
+			log.Println("Skipped VCS initialization...")
+			return nil
 		}
-	} else {
-		fmt.Printf("%s already initialized\n", projItem.SourceControl)
 	}
-	if len(projItem.Type) == 0 {
-		if ans, err := ui.Select("What type of project is it", project.AllNames); err != nil {
+	if err = ctx.VC.Open(ctx.Project.Path); err != nil {
+		return err
+	}
+	if ctx.InitialCommitExists {
+		fmt.Printf("%s already initialized\n", ctx.Project.SourceControl)
+	}
+	return nil
+}
+
+func (m *ProjectMenu) checkBranches(ctx *accessor.FinalizationContext) (err error) {
+	if ctx.InitialCommitExists {
+		if branches, err := ctx.VC.ListBranches(vcs.BranchOptions{}); err != nil {
 			return err
 		} else {
-			projItem.Type = ans
+			for _, branch := range branches {
+				if branch == ctx.Workspace.BranchNames["development"] {
+					ctx.DevelopExists = true
+				} else if branch == ctx.Workspace.BranchNames["production"] {
+					ctx.MasterExists = true
+				}
+			}
 		}
-	}
-	accessor := project.Get(projItem.Type)
-	if ok, err := accessor.Detect(projItem.Path); err != nil || !ok {
-		fmt.Printf("Initializing %s project...\n", accessor.AccessorName())
-		if err = accessor.Initialize(projItem.Path, &projItem); err != nil {
-			return err
+		if ctx.InitialCommitExists && !ctx.MasterExists {
+			return fmt.Errorf("production branch '%s' wasn't found in '%s'", ctx.Workspace.BranchNames["production"], ctx.Project.Path)
 		}
 	}
 	return nil
@@ -158,9 +244,10 @@ func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
 			break
 		}
 	}
+
 	if len(projType) == 0 {
-		for _, n := range project.AllNames {
-			a := project.Get(n)
+		for _, n := range accessor.GetAllNames() {
+			a := accessor.Get(n)
 			if ok, err := a.Detect(path); err == nil && ok {
 				projType = a.AccessorName()
 				break
@@ -168,7 +255,7 @@ func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
 		}
 	}
 	if len(projType) == 0 {
-		if ans, err := ui.Select("Unknown project type, please pick a type", project.AllNames); err != nil {
+		if ans, err := ui.Select("Unknown project type, please pick a type", accessor.GetAllNames()); err != nil {
 			return "", err
 		} else {
 			projType = ans
@@ -213,7 +300,7 @@ func (m *ProjectMenu) Discover() error {
 			// detect and open the project using VCS
 			if sourceControl == nil {
 				if sourceControl, err = vcs.Open(projFolder); err != nil {
-					log.Printf("failed to open folder '%s' using %s, %s", projFolder, sourceControl.Name(), err.Error())
+					log.Printf("failed to open folder '%s', %s", projFolder, err.Error())
 				}
 			} else {
 				if err = sourceControl.Open(projFolder); err != nil {
@@ -241,7 +328,7 @@ func (m *ProjectMenu) Discover() error {
 					return err
 				}
 			} else {
-				if err := m.Create(newItem); err != nil {
+				if err = m.Create(newItem); err != nil {
 					return err
 				}
 			}

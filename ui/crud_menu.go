@@ -22,10 +22,10 @@ type CRUDMenu struct {
 	ItemFieldTypes map[string]ItemFieldType
 	Names          []string
 	Indices        map[string]int
-	Finalizer      func(item interface{}) error
+	Finalizer      func(w *config.Workspace, item interface{}) error
 }
 
-func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType, finalizer func(item interface{}) error, discover bool) (*CRUDMenu, error) {
+func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType, finalizer func(w *config.Workspace, item interface{}) error, discover bool) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
 		Workspace:      wksp,
 		Key:            key,
@@ -80,7 +80,7 @@ func (m *CRUDMenu) Edit(id int, newItem interface{}) error {
 		return errors.New("invalid project")
 	}
 	if m.Finalizer != nil {
-		if err := m.Finalizer(newItem); err != nil {
+		if err := m.Finalizer(m.Workspace, newItem); err != nil {
 			return err
 		}
 	}
@@ -92,7 +92,7 @@ func (m *CRUDMenu) Edit(id int, newItem interface{}) error {
 func (m *CRUDMenu) Create(newItem interface{}) error {
 	v := reflect.Indirect(reflect.ValueOf(newItem)).Interface()
 	if m.Finalizer != nil {
-		if err := m.Finalizer(v); err != nil {
+		if err := m.Finalizer(m.Workspace, newItem); err != nil {
 			return err
 		}
 	}

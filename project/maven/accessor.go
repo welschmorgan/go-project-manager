@@ -4,9 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
-	"github.com/welschmorgan/go-release-manager/ui"
 )
 
 type ProjectAccessor struct {
@@ -28,34 +26,15 @@ func (a *ProjectAccessor) DescriptionFile() string {
 	return "pom.xml"
 }
 
-func (a *ProjectAccessor) Initialize(p string, proj *config.Project) error {
-	a.path = p
+func (a *ProjectAccessor) Scaffold(ctx *accessor.FinalizationContext) error {
+	a.path = ctx.Project.Path
 	a.pom = NewPOMFile()
-	a.pomFile = filepath.Join(p, a.DescriptionFile())
-	println("------[ Maven POM ]-------")
-	var ans string
-	var err error
-	if ans, err = ui.Ask("\tModelVersion", DefaultPOMModel); err != nil {
-		return err
-	} else {
-		a.pom.Root.SetModelVersion(ParseModelVersion(ans))
-	}
-	if ans, err = ui.Ask("\tArtifactId", proj.Name); err != nil {
-		return err
-	} else {
-		a.pom.Root.ArtifactId = ans
-	}
-	if ans, err = ui.Ask("\tGroupId", "com."); err != nil {
-		return err
-	} else {
-		a.pom.Root.GroupId = ans
-	}
-	if ans, err = ui.Ask("\tVersion", DefaultPOMVersion); err != nil {
-		return err
-	} else {
-		a.pom.Root.Version = ans
-	}
-	return a.pom.WriteFile(a.pomFile)
+	a.pomFile = filepath.Join(ctx.Project.Path, a.DescriptionFile())
+	return a.Scaffolder().Scaffold(ctx)
+}
+
+func (a *ProjectAccessor) Scaffolder() accessor.Scaffolder {
+	return &MavenScaffolder{}
 }
 
 func (a *ProjectAccessor) Open(p string) error {
