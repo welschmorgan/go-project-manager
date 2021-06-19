@@ -4,10 +4,13 @@ import "github.com/welschmorgan/go-release-manager/config"
 
 type ProjectAccessor interface {
 	// Retrieve the name of this accessor
-	Name() string
+	AccessorName() string
 
 	// Retrieve the path of the project
 	Path() string
+
+	// Retrieve the name of the project file
+	DescriptionFile() string
 
 	// Initialize a new project
 	Initialize(p string, proj *config.Project) error
@@ -19,8 +22,8 @@ type ProjectAccessor interface {
 	Open(p string) error
 
 	// Retrieve the current project version
-	CurrentVersion() (string, error)
+	Version() (string, error)
 
 	// Retrieve the current project name
-	CurrentName() (string, error)
+	Name() (string, error)
 }

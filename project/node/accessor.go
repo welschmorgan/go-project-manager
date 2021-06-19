@@ -14,7 +14,7 @@ type ProjectAccessor struct {
 	pkg     Package
 }
 
-func (a *ProjectAccessor) Name() string {
+func (a *ProjectAccessor) AccessorName() string {
 	return "Node"
 }
 
@@ -25,22 +25,26 @@ func (a *ProjectAccessor) Path() string {
 func (a *ProjectAccessor) Open(p string) error {
 	a.path = p
 	a.pkg = Package{}
-	a.pkgFile = filepath.Join(p, "package.json")
+	a.pkgFile = filepath.Join(p, a.DescriptionFile())
 	return a.pkg.ReadFile(a.pkgFile)
 }
 
 func (a *ProjectAccessor) Detect(p string) (bool, error) {
-	fname := filepath.Join(p, "package.json")
+	fname := filepath.Join(p, a.DescriptionFile())
 	if _, err := os.Stat(fname); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (a *ProjectAccessor) CurrentVersion() (string, error) {
+func (a *ProjectAccessor) Version() (string, error) {
 	return a.pkg.Version()
 }
 
-func (a *ProjectAccessor) CurrentName() (string, error) {
+func (a *ProjectAccessor) Name() (string, error) {
 	return a.pkg.Name()
+}
+
+func (a *ProjectAccessor) DescriptionFile() string {
+	return "package.json"
 }

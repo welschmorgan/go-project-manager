@@ -19,7 +19,7 @@ var AllNames = []string{}
 
 func init() {
 	for _, a := range All {
-		AllNames = append(AllNames, a.Name())
+		AllNames = append(AllNames, a.AccessorName())
 	}
 }
 
@@ -31,7 +31,7 @@ func instanciate(a accessor.ProjectAccessor) accessor.ProjectAccessor {
 func Get(n string) accessor.ProjectAccessor {
 	loName := strings.ToLower(n)
 	for _, a := range All {
-		if strings.ToLower(a.Name()) == loName {
+		if strings.ToLower(a.AccessorName()) == loName {
 			return instanciate(a)
 		}
 	}
@@ -41,7 +41,7 @@ func Get(n string) accessor.ProjectAccessor {
 func Detect(p string) (accessor.ProjectAccessor, error) {
 	for _, a := range All {
 		if config.Get().Verbose {
-			fmt.Printf("%sdetect project: %s - %s\n", strings.Repeat("\t", config.Get().Indent), p, a.Name())
+			fmt.Printf("%sdetect project: %s - %s\n", strings.Repeat("\t", config.Get().Indent), p, a.AccessorName())
 		}
 		if ok, err := a.Detect(p); ok {
 			if err != nil {

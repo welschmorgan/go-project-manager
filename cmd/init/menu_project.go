@@ -119,7 +119,12 @@ func (m *ProjectMenu) FinalizeProject(item interface{}) error {
 		return fmt.Errorf("%s: not a directory", projItem.Path)
 	}
 	v := vcs.Get(projItem.SourceControl)
+	if v == nil {
+		return fmt.Errorf("%s: unknown vcs", projItem.SourceControl)
+	}
+	vcsFirstInit := false
 	if ok, err := v.Detect(projItem.Path); err != nil || !ok {
+		vcsFirstInit = true
 		if initGit, _ := ui.AskYN(projItem.SourceControl + " not initialized, do it now"); initGit {
 			if err = v.Initialize(projItem.Path, nil); err != nil {
 				return err
@@ -128,9 +133,16 @@ func (m *ProjectMenu) FinalizeProject(item interface{}) error {
 	} else {
 		fmt.Printf("%s already initialized\n", projItem.SourceControl)
 	}
+	if len(projItem.Type) == 0 {
+		if ans, err := ui.Select("What type of project is it", project.AllNames); err != nil {
+			return err
+		} else {
+			projItem.Type = ans
+		}
+	}
 	accessor := project.Get(projItem.Type)
 	if ok, err := accessor.Detect(projItem.Path); err != nil || !ok {
-		println("Initializing project " + projItem.Path + "...")
+		fmt.Printf("Initializing %s project...\n", accessor.AccessorName())
 		if err = accessor.Initialize(projItem.Path, &projItem); err != nil {
 			return err
 		}
@@ -150,7 +162,7 @@ func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
 		for _, n := range project.AllNames {
 			a := project.Get(n)
 			if ok, err := a.Detect(path); err == nil && ok {
-				projType = a.Name()
+				projType = a.AccessorName()
 				break
 			}
 		}

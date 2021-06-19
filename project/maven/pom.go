@@ -2,9 +2,14 @@ package maven
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io"
 	"os"
 )
+
+const DefaultPOMModel = POMModel4
+const DefaultPOMVersion = "0.1.0-SNAPSHOT"
+const DefaultPOMJavaVersion = "1.8"
 
 type POMProperties map[string]string
 
@@ -58,10 +63,11 @@ func (m *POMProperties) UnmarshalXML(d *xml.Decoder, start xml.StartElement) err
 }
 
 type POMDependency struct {
-	GroupId    string `xml:"groupId"`
-	ArtifactId string `xml:"artifactId"`
-	Version    string `xml:"version"`
-	Scope      string `xml:"scope"`
+	XMLName    xml.Name `xml:"dependency"`
+	GroupId    string   `xml:"groupId"`
+	ArtifactId string   `xml:"artifactId"`
+	Version    string   `xml:"version"`
+	Scope      string   `xml:"scope"`
 }
 
 type POMDependencies map[string]POMDependency
@@ -116,11 +122,13 @@ func (m *POMDependencies) UnmarshalXML(d *xml.Decoder, start xml.StartElement) e
 }
 
 type POMProject struct {
+	XMLName xml.Name `xml:"project"`
+
 	Xmlns             string `xml:"xmlns,attr"`
 	XmlnsXsi          string `xml:"xmlns:xsi,attr"`
 	XsiSchemaLocation string `xml:"xsi:schemaLocation,attr"`
 
-	ModelVersion string          `xml:"modelVersion"`
+	ModelVersion POMModelVersion `xml:"modelVersion"`
 	GroupId      string          `xml:"groupId"`
 	ArtifactId   string          `xml:"artifactId"`
 	Version      string          `xml:"version"`
@@ -128,47 +136,99 @@ type POMProject struct {
 	Dependencies POMDependencies `xml:"dependencies"`
 }
 
+func (p *POMProject) SetModelVersion(v POMModelVersion) {
+	p.ModelVersion = v
+	p.Xmlns = "http://maven.apache.org/POM/" + v.Version()
+	p.XmlnsXsi = "http://www.w3.org/2001/XMLSchema-instance"
+	p.XsiSchemaLocation = "http://maven.apache.org/POM/" + v.Version() + " http://maven.apache.org/xsd/maven-" + v.Version() + ".xsd"
+}
+
 type POMFile struct {
 	Root *POMProject `xml:"project"`
 }
 
-func NewPOMFile(modelVersion string) POMFile {
-	return POMFile{
+type POMModelVersion uint8
+
+const (
+	POMModelUnknown POMModelVersion = iota
+	POMModel1       POMModelVersion = iota
+	POMModel2       POMModelVersion = iota
+	POMModel3       POMModelVersion = iota
+	POMModel4       POMModelVersion = iota
+)
+
+func ParseModelVersion(s string) POMModelVersion {
+	if s == POMModel1.Version() || s == fmt.Sprint(POMModel1.MajorVersion()) {
+		return POMModel1
+	}
+	return POMModelUnknown
+}
+
+func (v POMModelVersion) MajorVersion() uint8 {
+	switch v {
+	case POMModelUnknown:
+		return 0
+	case POMModel1:
+		return 1
+	case POMModel2:
+		return 2
+	case POMModel3:
+		return 3
+	case POMModel4:
+		return 4
+	default:
+		panic(fmt.Sprintf("Unknown POMModelVersion: %d", v))
+	}
+}
+func (v POMModelVersion) Version() string {
+	return fmt.Sprintf("%d.0.0", v.MajorVersion())
+}
+
+func (v POMModelVersion) String() string {
+	return v.Version()
+}
+
+func NewPOMFileWithValues(modelVersion POMModelVersion, groupId, artifactId, version string) *POMFile {
+	pf := &POMFile{
 		Root: &POMProject{
-			Xmlns:             "http://maven.apache.org/POM/" + modelVersion,
-			XmlnsXsi:          "http://www.w3.org/2001/XMLSchema-instance",
-			XsiSchemaLocation: "http://maven.apache.org/POM/" + modelVersion + " http://maven.apache.org/xsd/maven-" + modelVersion + ".xsd",
-			ModelVersion:      modelVersion,
-			Properties: map[string]string{
-				"maven.compiler.source": "1.8",
-				"maven.compiler.target": "1.8",
+			GroupId:    groupId,
+			ArtifactId: artifactId,
+			Version:    version,
+			Properties: POMProperties{
+				"maven.compiler.source": DefaultPOMJavaVersion,
+				"maven.compiler.target": DefaultPOMJavaVersion,
 			},
 		},
 	}
+	pf.Root.SetModelVersion(modelVersion)
+	return pf
 }
 
-func (p POMFile) Write(b []byte) error {
-	if data, err := xml.MarshalIndent(&p, "", "  "); err != nil {
-		return err
+func NewPOMFile() *POMFile {
+	return NewPOMFileWithValues(DefaultPOMModel, "", "", DefaultPOMVersion)
+}
+
+func (p *POMFile) Write() ([]byte, error) {
+	if data, err := xml.MarshalIndent(*p.Root, "", "  "); err != nil {
+		return nil, err
 	} else {
-		copy(data, b)
+		return data, nil
 	}
-	return nil
 }
 
-func (p POMFile) Read(b []byte) error {
+func (p *POMFile) Read(b []byte) error {
 	return xml.Unmarshal(b, &p)
 }
 
-func (p POMFile) WriteFile(fname string) error {
-	xml := []byte{}
-	if err := p.Write(xml); err != nil {
+func (p *POMFile) WriteFile(fname string) error {
+	if xml, err := p.Write(); err != nil {
 		return err
+	} else {
+		return os.WriteFile(fname, xml, 0755)
 	}
-	return os.WriteFile(fname, xml, 0755)
 }
 
-func (p POMFile) ReadFile(fname string) error {
+func (p *POMFile) ReadFile(fname string) error {
 	if _, err := os.Stat(fname); err == nil || os.IsExist(err) {
 		if content, err := os.ReadFile(fname); err != nil {
 			return err
