@@ -250,6 +250,14 @@ var All = []VersionControlSoftware{
 	&Hg{},
 }
 
+var AllNames = []string{}
+
+func init() {
+	for _, v := range All {
+		AllNames = append(AllNames, v.Name())
+	}
+}
+
 func instanciate(a VersionControlSoftware) VersionControlSoftware {
 	inst := reflect.New(reflect.TypeOf(a).Elem())
 	return inst.Interface().(VersionControlSoftware)

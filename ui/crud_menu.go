@@ -11,30 +11,32 @@ import (
 var errMenuQuit = errors.New("user quit")
 
 type CRUDMenu struct {
-	Workspace    *config.Workspace
-	Key          string
-	SubKey       string
-	RefItem      interface{}
-	Validators   []ObjValidator
-	Actions      []CRUDAction
-	ActionLabels map[uint8]string
-	Items        []interface{}
-	Names        []string
-	Indices      map[string]int
+	Workspace      *config.Workspace
+	Key            string
+	SubKey         string
+	RefItem        interface{}
+	Validators     []ObjValidator
+	Actions        []CRUDAction
+	ActionLabels   map[uint8]string
+	Items          []interface{}
+	ItemFieldTypes map[string]ItemFieldType
+	Names          []string
+	Indices        map[string]int
 }
 
-func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string) (*CRUDMenu, error) {
+func NewCRUDMenu(wksp *config.Workspace, key, subKey string, refItem interface{}, validators []ObjValidator, actions []CRUDAction, actionLabels map[uint8]string, itemFieldTypes map[string]ItemFieldType) (*CRUDMenu, error) {
 	menu := &CRUDMenu{
-		Workspace:    wksp,
-		Key:          key,
-		SubKey:       subKey,
-		RefItem:      refItem,
-		Validators:   validators,
-		Actions:      actions,
-		ActionLabels: actionLabels,
-		Items:        []interface{}{},
-		Names:        make([]string, 0),
-		Indices:      map[string]int{},
+		Workspace:      wksp,
+		Key:            key,
+		SubKey:         subKey,
+		RefItem:        refItem,
+		Validators:     validators,
+		Actions:        actions,
+		ActionLabels:   actionLabels,
+		Items:          []interface{}{},
+		ItemFieldTypes: itemFieldTypes,
+		Names:          make([]string, 0),
+		Indices:        map[string]int{},
 	}
 	if menu.ActionLabels == nil || len(menu.ActionLabels) == 0 {
 		menu.ActionLabels = map[uint8]string{
@@ -129,7 +131,7 @@ func (m *CRUDMenu) SelectAction() (CRUDAction, error) {
 	for _, a := range m.Actions {
 		actionNames = append(actionNames, a.String())
 	}
-	if action, err := Select("Action", actionNames, nil); err != nil {
+	if action, err := Select("Action", actionNames); err != nil {
 		return CRUDAction{Id: 0, Name: ""}, err
 	} else if ret, err := ParseCRUDAction(action); err != nil {
 		return CRUDAction{Id: 0, Name: ""}, err
@@ -188,7 +190,7 @@ func (m *CRUDMenu) RenderOnce() error {
 		return err
 	}
 	if action == ActionRemove || action == ActionEdit {
-		if project, err = Select(m.ActionLabels[action.Id], m.Names, nil); err != nil {
+		if project, err = Select(m.ActionLabels[action.Id], m.Names); err != nil {
 			return err
 		}
 	}
@@ -197,7 +199,7 @@ func (m *CRUDMenu) RenderOnce() error {
 		defaultProject = m.Get(project)
 	}
 	if action == ActionEdit || action == ActionAdd {
-		if res, err := AskObject(m.ActionLabels[action.Id], defaultProject, m.Validators...); err != nil {
+		if res, err := AskObject(m.ActionLabels[action.Id], defaultProject, m.ItemFieldTypes, m.Validators...); err != nil {
 			return err
 		} else if action == ActionEdit {
 			rv := reflect.Indirect(reflect.ValueOf(defaultProject))

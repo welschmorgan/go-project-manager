@@ -35,6 +35,10 @@ func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 			ui.ActionEdit.Id:   "Edit existing developper",
 			ui.ActionRemove.Id: "Remove existing developper",
 			ui.ActionClear.Id:  "Clear developpers",
+		}, map[string]ui.ItemFieldType{
+			"Name":  ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Email": ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Phone": ui.NewItemFieldType(ui.ItemFieldText, ""),
 		}); err != nil {
 		return nil, err
 	} else {

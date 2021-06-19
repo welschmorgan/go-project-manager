@@ -63,6 +63,11 @@ func NewProjectMenu(workspace *config.Workspace) (*ProjectMenu, error) {
 			ui.ActionEdit.Id:   "Edit existing project",
 			ui.ActionRemove.Id: "Remove existing project",
 			ui.ActionClear.Id:  "Clear projects",
+		}, map[string]ui.ItemFieldType{
+			"Name":          ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Path":          ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Url":           ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"SourceControl": ui.NewItemFieldType(ui.ItemFieldList, vcs.AllNames),
 		}); err != nil {
 		return nil, err
 	} else {
