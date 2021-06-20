@@ -9,7 +9,7 @@ type Config struct {
 	Workspace
 	Indent            int
 	WorkspacesRoot    string
-	Verbose           bool
+	Verbose           VerboseLevel
 	CfgFile           string
 	WorkingDirectory  string
 	WorkspaceFilename string
