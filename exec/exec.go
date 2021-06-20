@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 )
 
 var (
@@ -62,7 +61,7 @@ func (c *Command) Start() error {
 		c.stdoutPipe, _ = c.Cmd.StdoutPipe()
 		c.stderrPipe, _ = c.Cmd.StderrPipe()
 		if err := c.Cmd.Start(); err != nil {
-			log.Printf("Error executing command: %s......\n", err.Error())
+			log.Printf("Cannot execute command: %s\n", err.Error())
 			return err
 		}
 	}
@@ -89,11 +88,32 @@ func (c *Command) StderrLines() []string {
 	return c.stderrLines
 }
 
-func (c *Command) Run(filter CommandOutputFilter) error {
-	if config.Get().Verbose || config.Get().DryRun {
-		argStr := c.ArgString()
-		fmt.Printf("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), c.name, argStr)
+func (c *Command) readAll(r *bytes.Buffer, f CommandOutputFilter) []string {
+	lines := map[string]bool{}
+	retLines := []string{}
+	for line, err := r.ReadString('\n'); err == nil; line, err = r.ReadString('\n') {
+		log.Debugln(line)
+		if f&CommandOutputTrim != CommandOutputNoFilter {
+			line = strings.TrimSpace(line)
+		}
+		if len(line) > 0 || f&CommandOutputKeepEmpty == CommandOutputNoFilter {
+			if f&CommandOutputUnique != CommandOutputNoFilter {
+				if ok := lines[line]; !ok {
+					lines[line] = true
+					retLines = append(retLines, line)
+				}
+			} else {
+				retLines = append(retLines, line)
+			}
+		}
 	}
+	return retLines
+}
+
+func (c *Command) Run(filter CommandOutputFilter) error {
+	argStr := c.ArgString()
+	log.Debugf("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), c.name, argStr)
+
 	var wg sync.WaitGroup
 	var bufStdout *bytes.Buffer = bytes.NewBufferString("")
 	var bufStderr *bytes.Buffer = bytes.NewBufferString("")
@@ -118,55 +138,18 @@ func (c *Command) Run(filter CommandOutputFilter) error {
 
 		if err := c.Wait(); err != nil {
 			if !c.ProcessState.Exited() {
-				log.Printf("Failed to wait for command, killing now... %v", c.Process.Kill())
+				log.Errorf("Failed to wait for command, killing now... %v", c.Process.Kill())
 				return err
 			}
 		}
 
-		lines := map[string]bool{}
-
 		defer c.stdoutPipe.Close()
 		defer c.stderrPipe.Close()
 
-		c.stdoutLines = []string{}
-		c.stderrLines = []string{}
-
-		for line, err := bufStdout.ReadString('\n'); err == nil; line, err = bufStdout.ReadString('\n') {
-			if config.Get().Verbose {
-				fmt.Fprintf(os.Stdout, "%s", line)
-			}
-			if filter&CommandOutputTrim != CommandOutputNoFilter {
-				line = strings.TrimSpace(line)
-			}
-			if len(line) > 0 || filter&CommandOutputKeepEmpty == CommandOutputNoFilter {
-				if filter&CommandOutputUnique != CommandOutputNoFilter {
-					if ok := lines[line]; !ok {
-						lines[line] = true
-						c.stdoutLines = append(c.stdoutLines, line)
-					}
-				} else {
-					c.stdoutLines = append(c.stdoutLines, line)
-				}
-			}
-		}
-
-		for line, err := bufStderr.ReadString('\n'); err == nil; line, err = bufStderr.ReadString('\n') {
-			if config.Get().Verbose {
-				fmt.Fprintf(os.Stderr, "%s", line)
-			}
-			if filter&CommandOutputTrim != CommandOutputNoFilter {
-				line = strings.TrimSpace(line)
-			}
-			if filter&CommandOutputUnique != CommandOutputNoFilter {
-				if ok := lines[line]; !ok {
-					lines[line] = true
-					c.stderrLines = append(c.stderrLines, line)
-				}
-			} else {
-				c.stderrLines = append(c.stderrLines, line)
-			}
-		}
+		c.stdoutLines = c.readAll(bufStdout, filter)
+		c.stderrLines = c.readAll(bufStderr, filter|^CommandOutputUnique|^CommandOutputKeepEmpty)
 	}
+
 	return nil
 }
 
@@ -188,13 +171,9 @@ func DumpCommandErrors(exitCode int, errs []string) {
 		level = "warning"
 		color = "\033[1;33m"
 	}
-	shouldPrint := level == "error" || config.Get().Verbose
-	if !shouldPrint {
-		return
-	}
 	if SHOW_ERRORS && len(errs) > 0 {
 		if len(errs) == 1 {
-			fmt.Fprintf(os.Stderr, "%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
+			log.Errorf("%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
 		} else {
 			errStr := ""
 			numErrs := 0
@@ -207,7 +186,7 @@ func DumpCommandErrors(exitCode int, errs []string) {
 					numErrs += 1
 				}
 			}
-			fmt.Fprintf(os.Stderr, "%s%s%d %s(s)%s:\n%s\n", indent, color, len(errs), level, "\033[0m", errStr)
+			log.Errorf("%s%s%d %s(s)%s:\n%s\n", indent, color, len(errs), level, "\033[0m", errStr)
 		}
 	}
 }

@@ -3,10 +3,10 @@ package vcs
 import (
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 )
 
 var (
@@ -119,9 +119,7 @@ func Get(n string) VersionControlSoftware {
 func Detect(path string) (VersionControlSoftware, error) {
 	for _, s := range All {
 		if err := s.Detect(path); err != nil && err != errNotYetImpl {
-			if config.Get().Verbose {
-				fmt.Fprintf(os.Stderr, "error: %s: %s: %s\n", path, s.Name(), err.Error())
-			}
+			log.Errorf("error: %s: %s: %s\n", path, s.Name(), err.Error())
 		} else {
 			return instanciate(s), nil
 		}

@@ -9,9 +9,11 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/thediveo/enumflag"
 	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
 	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 )
 
 var Command = &cobra.Command{
@@ -39,7 +41,17 @@ func init() {
 	viper.BindPFlag("config", Command.PersistentFlags().Lookup("config"))
 
 	// verbose
-	Command.PersistentFlags().BoolVarP(&config.Get().Verbose, "verbose", "v", config.Get().Verbose, "show additionnal log messages")
+
+	// ⑤ Define the CLI flag parameters for your wrapped enum flag.
+	var VerboseLevels = map[config.VerboseLevel][]string{}
+	for _, v := range config.VerboseLevels {
+		VerboseLevels[v] = v.TextualRepresentations()
+	}
+	Command.PersistentFlags().VarP(
+		enumflag.New(&config.Get().Verbose, "verbose", VerboseLevels, enumflag.EnumCaseInsensitive),
+		"verbose",
+		"v",
+		"show additionnal log messages; can be 'none', 'low', 'normal', 'high'")
 	viper.BindPFlag("verbose", Command.PersistentFlags().Lookup("verbose"))
 
 	// dry run
@@ -86,9 +98,11 @@ func initConfig() {
 			panic(fmt.Errorf("configuration error: %s", err))
 		}
 	}
-	if config.Get().Verbose {
-		fmt.Printf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
-	}
+
+	log.SetLevel(config.Get().Verbose.LogLevel())
+
+	log.Debugf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
+
 	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
 		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
 			fmt.Fprintf(os.Stderr, "\033[1;33merror\033[0m: %s\n", err.Error())
@@ -99,18 +113,16 @@ func initConfig() {
 	}
 	config.Get().WorkspacePath = filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
 	if _, err := os.Stat(config.Get().WorkspacePath); err == nil || os.IsExist(err) {
-		fmt.Printf("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
+		log.Infof("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
 		if err = config.Get().Workspace.ReadFile(config.Get().WorkspacePath); err != nil {
 			panic(err.Error())
 		}
 	}
 
-	if config.Get().Verbose {
-		if content, err := json.MarshalIndent(*config.Get(), "", "  "); err != nil {
-			panic(err.Error())
-		} else {
-			fmt.Printf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
-		}
+	if content, err := json.MarshalIndent(*config.Get(), "", "  "); err != nil {
+		panic(err.Error())
+	} else {
+		log.Debugf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
 	}
 
 	if len(config.Get().WorkingDirectory) != 0 {
