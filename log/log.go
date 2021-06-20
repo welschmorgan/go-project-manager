@@ -15,11 +15,28 @@ import (
 )
 
 const CALLER_FRAME = 3
+const CALLER_FUNC_PAD_SIZE = 30
+const CALLER_FILE_PAD_SIZE = 20
 const LOGGER_MAIN = "main"
 
 var loggers = map[string]*log.Logger{}
 
 func init() {
+}
+
+func PrettifyCaller(callerFrameOffset int) func(f *runtime.Frame) (function, file string) {
+	return func(f *runtime.Frame) (function, file string) {
+		function, file = fileInfo(CALLER_FRAME + callerFrameOffset)
+		function = fmt.Sprintf(fmt.Sprintf("%%-%ds", CALLER_FUNC_PAD_SIZE+3+2), function)
+		if len(function) > CALLER_FUNC_PAD_SIZE {
+			removeCount := len(function) - (CALLER_FUNC_PAD_SIZE + 3 + 2)
+			halfPos := len(function) / 2
+			function = fmt.Sprintf("%s...%s", string(function[0:halfPos-removeCount/2]), string(function[halfPos+removeCount/2:]))
+		}
+		// function = fmt.Sprintf(fmt.Sprintf("%%%d.%ds", CALLER_FUNC_PAD_SIZE, CALLER_FUNC_PAD_SIZE), function)
+		file = fmt.Sprintf(fmt.Sprintf("%%%-d.%ds", CALLER_FILE_PAD_SIZE, CALLER_FILE_PAD_SIZE), file)
+		return
+	}
 }
 
 func Setup() error {
@@ -56,11 +73,9 @@ func Logger(n string) *log.Logger {
 		loggers[n].SetFormatter(&log.TextFormatter{
 			DisableLevelTruncation: true,
 			PadLevelText:           true,
-			CallerPrettyfier: func(f *runtime.Frame) (function, file string) {
-				function, file = fileInfo(CALLER_FRAME + 7)
-				return
-			},
+			CallerPrettyfier:       PrettifyCaller(7),
 		})
+		loggers[n].SetLevel(log.GetLevel())
 
 		// file rotation
 		// loggers[n].SetOutput(io.MultiWriter(os.Stdout, rotator))
@@ -77,10 +92,7 @@ func Logger(n string) *log.Logger {
 				DisableColors:          true,
 				PadLevelText:           true,
 				DisableLevelTruncation: true,
-				CallerPrettyfier: func(f *runtime.Frame) (function, file string) {
-					function, file = fileInfo(CALLER_FRAME + 9)
-					return
-				},
+				CallerPrettyfier:       PrettifyCaller(9),
 			},
 		}); err != nil {
 			panic(err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
 
@@ -21,9 +22,10 @@ var undoActionParams = map[string][]string{
 	"stash_save":    {"name"},
 	"create_branch": {"newBranch", "oldBranch"},
 	"checkout":      {"newBranch", "oldBranch"},
-	"merge":         {"source", "target"},
+	"merge":         {"hashBeforeMerge", "hashAfterMerge", "source", "target"},
 	"create_tag":    {"name"},
 	"bump_version":  {"oldVersion", "newVersion"},
+	"pull_branch":   {"branch", "prevHead", "nextHead"},
 }
 
 var undoActionParamHandlers = map[string]func(*UndoAction) error{
@@ -33,6 +35,10 @@ var undoActionParamHandlers = map[string]func(*UndoAction) error{
 	},
 	"create_branch": func(u *UndoAction) error {
 		u.Title = fmt.Sprintf("Create branch %s from %s", u.Params["newBranch"], u.Params["oldBranch"])
+		return nil
+	},
+	"pull_branch": func(u *UndoAction) error {
+		u.Title = fmt.Sprintf("Pull %s (%s -> %s)", u.Params["branch"], u.Params["prevHead"], u.Params["nextHead"])
 		return nil
 	},
 	"checkout": func(u *UndoAction) error {
@@ -88,6 +94,8 @@ func (u *UndoAction) Run() error {
 		return u.undoStashSave()
 	case "create_branch":
 		return u.undoCreateBranch()
+	case "pull_branch":
+		return u.undoPullBranch()
 	case "checkout":
 		return u.undoCheckout()
 	case "merge":
@@ -101,7 +109,24 @@ func (u *UndoAction) Run() error {
 	}
 }
 
+func (u *UndoAction) undoPullBranch() (err error) {
+	branch := u.Params["branch"].(string)
+	prevHead := u.Params["prevHead"].(string)
+	nextHead := u.Params["nextHead"].(string)
+	log.Debugf("Checkout %s", branch)
+	if err = u.VC.Checkout(branch, nil); err != nil {
+		return err
+	}
+	log.Debugf("Reset HEAD from %s to %s", nextHead, prevHead)
+	err = u.VC.Reset(vcs.ResetOptions{
+		Hard:   true,
+		Commit: prevHead,
+	})
+	return err
+}
+
 func (u *UndoAction) undoStashSave() error {
+	log.Debugln("Pop stash")
 	_, err := u.VC.Stash(vcs.StashOptions{
 		Pop: true,
 	})
@@ -122,11 +147,12 @@ func (u *UndoAction) undoCreateBranch() error {
 			}
 		}
 		if !alreadyDeleted {
+			log.Debugf("Delete branch '%s'")
 			if err := u.VC.DeleteBranch(newBranch, nil); err != nil {
 				return err
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "\t\tBranch '%s' has already been deleted\n", newBranch)
+			log.Errorf("\t\tBranch '%s' has already been deleted\n", newBranch)
 		}
 	}
 	return nil
@@ -135,22 +161,29 @@ func (u *UndoAction) undoCreateBranch() error {
 func (u *UndoAction) undoCheckout() error {
 	oldBranch := u.Params["oldBranch"].(string)
 	// newBranch := u.Params["newBranch"].(string)
+	log.Debugf("Checkout %s", oldBranch)
 	return u.VC.Checkout(oldBranch, nil)
 }
 
 func (u *UndoAction) undoMerge() error {
 	// source := u.Params["source"].(string)
 	target := u.Params["target"].(string)
+	hashBeforeMerge := u.Params["hashBeforeMerge"].(string)
+	log.Debugf("Checkout %s", target)
 	if err := u.VC.Checkout(target, nil); err != nil {
 		return err
-	} else if err := u.VC.Reset(vcs.ResetOptions{Commit: "HEAD~1", Hard: true}); err != nil {
-		return err
+	} else {
+		log.Debugf("Reset HEAD to %s", hashBeforeMerge)
+		if err := u.VC.Reset(vcs.ResetOptions{Commit: hashBeforeMerge, Hard: true}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (u *UndoAction) undoTag() error {
 	name := u.Params["name"].(string)
+	log.Debugf("Delete tag %s", name)
 	return u.VC.Tag(name, vcs.TagOptions{
 		Delete: true,
 	})

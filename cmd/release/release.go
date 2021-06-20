@@ -156,9 +156,14 @@ func (r *Release) Do() error {
 	return nil
 }
 
-func (r *Release) Step(n string) {
-	log.Infof("[\033[1;34m*\033[0m] %s\n", n)
+func (r *Release) Step(fmt string, a ...interface{}) {
+	log.Infof("[\033[1;34m*\033[0m] "+fmt+"\n", a...)
 	config.Get().Indent = 1
+}
+
+func (r *Release) SubStep(fmt string, a ...interface{}) {
+	log.Infof("[\033[1;34m*\033[0m] "+fmt+"\n", a...)
+	config.Get().Indent++
 }
 
 func (r *Release) Undo() error {
@@ -173,10 +178,10 @@ func (r *Release) Undo() error {
 	for i := len(r.UndoActions) - 1; i >= 0; i-- {
 		action := r.UndoActions[i]
 		// if !action.Executed {
-		log.Debugf("%s[\033[1;34m*\033[0m] Undoing release step #%d: %s - path = %s\n", strings.Repeat("\t", config.Get().Indent), i, action.Title, action.Path)
+		log.Debugf("[\033[1;34m*\033[0m] Undoing release step #%d: %s - path = %s\n", i, action.Title, action.Path)
 		config.Get().Indent++
 		if err := action.Run(); err != nil {
-			log.Errorf("%s\033[1;31merror\033[0m: %s\n", strings.Repeat("\t", config.Get().Indent), err.Error())
+			log.Errorf("\033[1;31merror\033[0m: %s\n", err.Error())
 			errs = append(errs, err)
 		}
 		config.Get().Indent--
@@ -244,9 +249,17 @@ func (r *Release) StashModifications() error {
 
 func (r *Release) CheckoutBranch(branch string) error {
 	var err error
+	hash := ""
+	subj := ""
+
+	if hash, subj, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return err
+	}
 	if r.Context.oldBranch, err = r.Vc.CurrentBranch(); err != nil {
 		return err
-	} else if err = r.Vc.Checkout(branch, vcs.CheckoutOptions{CreateBranch: false}); err != nil {
+	}
+	log.Debugf("Checkout %s at %s - %s", branch, hash, subj)
+	if err = r.Vc.Checkout(branch, vcs.CheckoutOptions{CreateBranch: false}); err != nil {
 		return err
 	} else {
 		r.PushUndoAction("checkout", r.Project.Path, r.Vc.Name(), map[string]interface{}{
@@ -257,11 +270,28 @@ func (r *Release) CheckoutBranch(branch string) error {
 	return nil
 }
 
-func (r *Release) PullBranch() error {
-	r.Vc.CurrentBranch()
+func (r *Release) PullBranch() (err error) {
+	branch := ""
+	prevHead, nextHead := "", ""
+	if branch, err = r.Vc.CurrentBranch(); err != nil {
+		return err
+	}
+	if prevHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return err
+	}
 	if err := r.Vc.Pull(vcs.PullOptions{All: false, ListTags: false, Force: false}); err != nil {
 		return err
 	}
+	if nextHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return err
+	}
+	log.Debugf("Pull %s (was %s, now %s)", branch, prevHead, nextHead)
+	r.PushUndoAction("pull_branch", r.Project.Path, r.Vc.Name(), map[string]interface{}{
+		"branch":   branch,
+		"prevHead": prevHead,
+		"nextHead": nextHead,
+	})
+
 	return nil
 }
 
@@ -310,18 +340,39 @@ func (r *Release) ReleaseStart() error {
 	return nil
 }
 
+func (r *Release) Merge(source, dest string) error {
+	hashBeforeMerge, hashAfterMerge := "", ""
+	var err error
+	if hashBeforeMerge, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return err
+	}
+	if err := r.Vc.Merge(r.Context.releaseBranch, r.Context.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
+		return err
+	}
+	if hashAfterMerge, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return err
+	}
+	r.PushUndoAction("merge", r.Project.Path, r.Vc.Name(), map[string]interface{}{
+		"hashBeforeMerge": hashBeforeMerge,
+		"hashAfterMerge":  hashAfterMerge,
+		"source":          r.Context.releaseBranch,
+		"target":          r.Context.prodBranch,
+	})
+	return nil
+}
+
 func (r *Release) ReleaseFinish() error {
 	// merge release branch into prod branch
 	r.Step("Finish release")
 	r.Context.state |= ReleaseFinishStarted
-	if err := r.Vc.Merge(r.Context.releaseBranch, r.Context.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
+
+	r.SubStep("Merge " + r.Context.releaseBranch + " into " + r.Context.prodBranch)
+	if err := r.Merge(r.Context.releaseBranch, r.Context.prodBranch); err != nil {
 		return err
 	}
-	r.PushUndoAction("merge", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"source": r.Context.releaseBranch,
-		"target": r.Context.prodBranch,
-	})
+
 	// tag prod branch
+	r.SubStep("Tag " + r.Context.version)
 	if err := r.Vc.Tag(r.Context.version, vcs.TagOptions{Annotated: true, Message: fmt.Sprintf("Release %s: %s", r.Context.version, "TODO")}); err != nil {
 		return err
 	}
@@ -329,16 +380,15 @@ func (r *Release) ReleaseFinish() error {
 	r.PushUndoAction("create_tag", r.Project.Path, r.Vc.Name(), map[string]interface{}{
 		"name": r.Context.version,
 	})
+
+	r.SubStep("Merge tag " + r.Context.version + " into " + r.Context.devBranch)
 	// retro merge tag into dev branch
-	if err := r.Vc.Merge(r.Context.version, r.Context.devBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
+	if err := r.Merge(r.Context.version, r.Context.devBranch); err != nil {
 		return err
 	}
-	r.PushUndoAction("merge", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"source": r.Context.version,
-		"target": r.Context.devBranch,
-	})
 
 	// delete release branch
+	r.SubStep("Delete release branch " + r.Context.releaseBranch)
 	if err := r.Vc.DeleteBranch(r.Context.releaseBranch, nil); err != nil {
 		return err
 	}

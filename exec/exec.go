@@ -204,7 +204,6 @@ func DumpCommandErrors(exitCode int, errs ...string) {
 func DumpCommandErrorsWithOptions(exitCode int, errs []string, options RunOptions) {
 	level := ""
 	color := ""
-	indent := strings.Repeat("\t", config.Get().Indent)
 	if exitCode != 0 {
 		level = "error"
 		color = "\033[1;31m"
@@ -214,9 +213,9 @@ func DumpCommandErrorsWithOptions(exitCode int, errs []string, options RunOption
 	}
 	logErr := func(err string) {
 		if level == "warning" && !options.TreatWarningsAsErrors {
-			log.Warnf("%s%s%s: %v\n", indent, color, "\033[0m", err)
+			log.Warnf("%s%s: %v\n", color, "\033[0m", err)
 		} else {
-			log.Errorf("%s%s%s: %v\n", indent, color, "\033[0m", err)
+			log.Errorf("%s%s: %v\n", color, "\033[0m", err)
 		}
 	}
 	if SHOW_ERRORS && len(errs) > 0 {
@@ -227,7 +226,7 @@ func DumpCommandErrorsWithOptions(exitCode int, errs []string, options RunOption
 			numErrs := 0
 			for _, err := range errs {
 				if len(strings.TrimSpace(err)) > 0 {
-					formattedErrs = append(formattedErrs, fmt.Sprintf("%s\t- %s", indent, strings.TrimSpace(err)))
+					formattedErrs = append(formattedErrs, fmt.Sprintf("\t- %s", strings.TrimSpace(err)))
 					numErrs += 1
 				}
 			}
