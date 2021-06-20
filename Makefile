@@ -8,7 +8,7 @@ installdeps:
 
 clean:
 	rm -f ${TARGET}
-	go clean -x -cache
+	go clean -x
 
 re: clean ${TARGET}
 

@@ -2,163 +2,204 @@ package log
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var loggers = map[string]*log.Entry{
-	"main": nil,
-}
+const CALLER_FRAME = 3
+const LOGGER_MAIN = "main"
+
+var loggers = map[string]*log.Logger{}
 
 func init() {
-	log.SetReportCaller(true)
-	log.SetFormatter(&log.TextFormatter{
-		CallerPrettyfier: func(f *runtime.Frame) (function, file string) {
-			filename := path.Base(f.File)
-			function = fmt.Sprintf("%s()", path.Base(f.Function))
-			file = fmt.Sprintf("%s:%d", filename, f.Line)
-			return
-		},
-	})
-	loggers["main"] = log.WithFields(log.Fields{
-		"module": "app",
-	})
+	CreateLogger(LOGGER_MAIN)
+}
+
+func CreateLogger(n string) *log.Logger {
+	if _, ok := loggers[n]; !ok {
+		loggers[n] = log.New()
+		loggers[n].SetReportCaller(true)
+		loggers[n].SetFormatter(&log.TextFormatter{
+			DisableLevelTruncation: true,
+			PadLevelText:           true,
+			CallerPrettyfier: func(f *runtime.Frame) (function, file string) {
+				function, file = fileInfo(CALLER_FRAME + 7)
+				return
+			},
+		})
+	}
+	return loggers[n]
 }
 
 func SetLevel(level log.Level) {
 	log.SetLevel(level)
 }
 
-func Main() *log.Entry {
-	return loggers["main"]
+func Logger(n string) *log.Logger {
+	return loggers[n]
 }
 
-func Loggers() map[string]*log.Entry {
+func Main() *log.Logger {
+	return Logger(LOGGER_MAIN)
+}
+
+func MainEntry() *log.Entry {
+	// fn, file := fileInfo(CALLER_FRAME)
+	return Main().WithFields(log.Fields{})
+	// .WithField("file", file).WithField("function", fn)
+}
+
+func Loggers() map[string]*log.Logger {
 	return loggers
 }
 
 func Log(level log.Level, args ...interface{}) {
-	Main().Log(level, args...)
+	MainEntry().Log(level, args...)
 }
 
 func Trace(args ...interface{}) {
-	Main().Trace(args...)
+	MainEntry().Trace(args...)
 }
 
 func Debug(args ...interface{}) {
-	Main().Debug(args...)
+	MainEntry().Debug(args...)
 }
 
 func Print(args ...interface{}) {
-	Main().Print(args...)
+	MainEntry().Print(args...)
 }
 
 func Info(args ...interface{}) {
-	Main().Info(args...)
+	MainEntry().Info(args...)
 }
 
 func Warn(args ...interface{}) {
-	Main().Warn(args...)
+	MainEntry().Warn(args...)
 }
 
 func Warning(args ...interface{}) {
-	Main().Warning(args...)
+	MainEntry().Warning(args...)
 }
 
 func Error(args ...interface{}) {
-	Main().Error(args...)
+	MainEntry().Error(args...)
 }
 
 func Fatal(args ...interface{}) {
-	Main().Fatal(args...)
+	MainEntry().Fatal(args...)
 }
 
 func Panic(args ...interface{}) {
-	Main().Panic(args...)
+	MainEntry().Panic(args...)
 }
 
-// Entry Printf family functions
+// Logger Printf family functions
 
 func Logf(level log.Level, format string, args ...interface{}) {
-	Main().Logf(level, format, args...)
+	MainEntry().Logf(level, format, args...)
 }
 
 func Tracef(format string, args ...interface{}) {
-	Main().Tracef(format, args...)
+	MainEntry().Tracef(format, args...)
 }
 
 func Debugf(format string, args ...interface{}) {
-	Main().Debugf(format, args...)
+	MainEntry().Debugf(format, args...)
 }
 
 func Infof(format string, args ...interface{}) {
-	Main().Infof(format, args...)
+	MainEntry().Infof(format, args...)
 }
 
 func Printf(format string, args ...interface{}) {
-	Main().Printf(format, args...)
+	MainEntry().Printf(format, args...)
 }
 
 func Warnf(format string, args ...interface{}) {
-	Main().Warnf(format, args...)
+	MainEntry().Warnf(format, args...)
 }
 
 func Warningf(format string, args ...interface{}) {
-	Main().Warningf(format, args...)
+	MainEntry().Warningf(format, args...)
 }
 
 func Errorf(format string, args ...interface{}) {
-	Main().Errorf(format, args...)
+	MainEntry().Errorf(format, args...)
 }
 
 func Fatalf(format string, args ...interface{}) {
-	Main().Fatalf(format, args...)
+	MainEntry().Fatalf(format, args...)
 }
 
 func Panicf(format string, args ...interface{}) {
-	Main().Panicf(format, args...)
+	MainEntry().Panicf(format, args...)
 }
 
-// Entry Println family functions
+// Logger Println family functions
 
 func Logln(level log.Level, args ...interface{}) {
-	Main().Logln(level, args...)
+	MainEntry().Logln(level, args...)
 }
 
 func Traceln(args ...interface{}) {
-	Main().Traceln(args...)
+	MainEntry().Traceln(args...)
 }
 
 func Debugln(args ...interface{}) {
-	Main().Debugln(args...)
+	MainEntry().Debugln(args...)
 }
 
 func Infoln(args ...interface{}) {
-	Main().Infoln(args...)
+	MainEntry().Infoln(args...)
 }
 
 func Println(args ...interface{}) {
-	Main().Println(args...)
+	MainEntry().Println(args...)
 }
 
 func Warnln(args ...interface{}) {
-	Main().Warnln(args...)
+	MainEntry().Warnln(args...)
 }
 
 func Warningln(args ...interface{}) {
-	Main().Warningln(args...)
+	MainEntry().Warningln(args...)
 }
 
 func Errorln(args ...interface{}) {
-	Main().Errorln(args...)
+	MainEntry().Errorln(args...)
 }
 
 func Fatalln(args ...interface{}) {
-	Main().Fatalln(args...)
+	MainEntry().Fatalln(args...)
 }
 
 func Panicln(args ...interface{}) {
-	Main().Panicln(args...)
+	MainEntry().Panicln(args...)
+}
+
+func fileInfo(skip int) (function, file string) {
+	var line int
+	var ok bool
+	var pc uintptr
+	pc, file, line, ok = runtime.Caller(skip)
+	if !ok {
+		file = "<???>"
+		line = 1
+	} else {
+		if fnFrame := runtime.FuncForPC(pc); fnFrame != nil {
+			function = fnFrame.Name()
+		}
+
+		filePrefix := filepath.Dir(filepath.Dir(file))
+
+		file = strings.TrimPrefix(file, filePrefix)
+		file = strings.TrimPrefix(file, "/")
+
+		function = filepath.Base(function)
+
+	}
+	return fmt.Sprintf("%s()", function), fmt.Sprintf("%s:%d", file, line)
 }
