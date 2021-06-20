@@ -1,3 +1,4 @@
+// The log package simplify configuration of the logrus package.
 package log
 
 import (
@@ -14,16 +15,22 @@ import (
 	"github.com/welschmorgan/go-release-manager/fs"
 )
 
+// The number of frames to climb to find the real log caller
 const CALLER_FRAME = 3
+
+// The padding size of the function column
 const CALLER_FUNC_PAD_SIZE = 30
+
+// The padding size of the file column
 const CALLER_FILE_PAD_SIZE = 20
+
+// The default logger name
 const LOGGER_MAIN = "main"
 
+// The map of created loggers
 var loggers = map[string]*log.Logger{}
 
-func init() {
-}
-
+// PrettifyCallers retrieves the correct caller infos, without project directory.
 func PrettifyCaller(callerFrameOffset int) func(f *runtime.Frame) (function, file string) {
 	return func(f *runtime.Frame) (function, file string) {
 		function, file = fileInfo(CALLER_FRAME + callerFrameOffset)
@@ -39,6 +46,9 @@ func PrettifyCaller(callerFrameOffset int) func(f *runtime.Frame) (function, fil
 	}
 }
 
+// Setup prepares the whole logging mecanism.
+// It creates file and console loggers with file rolling.
+// It should be called after config, but before everything else
 func Setup() error {
 	log.SetLevel(config.Get().Verbose.LogLevel())
 
@@ -52,6 +62,7 @@ func Setup() error {
 	return nil
 }
 
+// SetOutput defines all loggers output
 func SetOutput(w io.Writer) {
 	log.SetOutput(w)
 	for _, logger := range loggers {
@@ -59,6 +70,7 @@ func SetOutput(w io.Writer) {
 	}
 }
 
+// SetLevel defines all loggers level
 func SetLevel(level log.Level) {
 	log.SetLevel(level)
 	for _, logger := range loggers {
@@ -66,6 +78,7 @@ func SetLevel(level log.Level) {
 	}
 }
 
+// Logger retrieves or creates a logger by name
 func Logger(n string) *log.Logger {
 	if _, ok := loggers[n]; !ok {
 		loggers[n] = log.New()
@@ -104,16 +117,19 @@ func Logger(n string) *log.Logger {
 	return loggers[n]
 }
 
+// Main retrieves the main logger instance
 func Main() *log.Logger {
 	return Logger(LOGGER_MAIN)
 }
 
+// MainEntry creates an entry in the main logger
 func MainEntry() *log.Entry {
 	// fn, file := fileInfo(CALLER_FRAME)
 	return Main().WithFields(log.Fields{})
 	// .WithField("file", file).WithField("function", fn)
 }
 
+// Loggers retrieves all loggers instances
 func Loggers() map[string]*log.Logger {
 	return loggers
 }

@@ -12,33 +12,43 @@ import (
 	"github.com/welschmorgan/go-release-manager/log"
 )
 
+// RunOptions allows configuring commands ran
 type RunOptions struct {
 	FailCommandWhenStderrContainsErrors bool
 	TreatWarningsAsErrors               bool
 }
 
+// Default run options
 var defaultRunOptions = RunOptions{
 	FailCommandWhenStderrContainsErrors: true,
 	TreatWarningsAsErrors:               false,
 }
 
+// Retrieves the default RunOptions instance
 func DefaultRunOptions() RunOptions {
 	return defaultRunOptions
 }
 
+// Show commands errors
 var (
 	SHOW_ERRORS = true
 )
 
+// Filter a command's output
 type CommandOutputFilter uint8
 
 const (
-	CommandOutputNoFilter  CommandOutputFilter = iota
-	CommandOutputUnique    CommandOutputFilter = 1 << iota
-	CommandOutputTrim      CommandOutputFilter = 1 << iota
+	// No filtering of output
+	CommandOutputNoFilter CommandOutputFilter = iota
+	// Remove duplicate lines
+	CommandOutputUnique CommandOutputFilter = 1 << iota
+	// Trim output lines
+	CommandOutputTrim CommandOutputFilter = 1 << iota
+	// Discard empty output lines
 	CommandOutputKeepEmpty CommandOutputFilter = 1 << iota
 )
 
+// Holds informations about a command to be run
 type Command struct {
 	*exec.Cmd
 	name        string
@@ -65,14 +75,17 @@ func NewCommandWithOptions(name string, args []string, options RunOptions) *Comm
 	}
 }
 
+// Define command options
 func (c *Command) SetOptions(o RunOptions) {
 	c.options = o
 }
 
+// Retrieve command options
 func (c *Command) Options() RunOptions {
 	return c.options
 }
 
+// Create a string out of the command's arguments
 func (c *Command) ArgString() string {
 	argStr := ""
 	for _, a := range c.args {
@@ -96,26 +109,32 @@ func (c *Command) Start() error {
 	return nil
 }
 
+// Retrieve the exit code
 func (c *Command) ExitCode() int {
 	return c.ProcessState.ExitCode()
 }
 
+// Retrieve the output as a string
 func (c *Command) Stdout() string {
 	return strings.Join(c.stdoutLines, "\n")
 }
 
+// Retrieve the error output as a string
 func (c *Command) Stderr() string {
 	return strings.Join(c.stderrLines, "\n")
 }
 
+// Retrieve the output as an array of lines
 func (c *Command) StdoutLines() []string {
 	return c.stdoutLines
 }
 
+// Retrieve the error output as an array of lines
 func (c *Command) StderrLines() []string {
 	return c.stderrLines
 }
 
+// Read everything from a buffer and filters it
 func (c *Command) readAll(r *bytes.Buffer, f CommandOutputFilter) []string {
 	lines := map[string]bool{}
 	retLines := []string{}
@@ -138,6 +157,7 @@ func (c *Command) readAll(r *bytes.Buffer, f CommandOutputFilter) []string {
 	return retLines
 }
 
+// Run the command
 func (c *Command) Run(filter CommandOutputFilter) error {
 	argStr := c.ArgString()
 	log.Tracef("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), c.name, argStr)
