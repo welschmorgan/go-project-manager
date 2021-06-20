@@ -9,6 +9,7 @@ import (
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project"
+	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
 	"github.com/welschmorgan/go-release-manager/version"
@@ -29,8 +30,8 @@ func NewRelease(p *config.Project) (r *Release, err error) {
 			releaseBranch:  config.Get().BranchNames["release"],
 			devBranch:      config.Get().BranchNames["development"],
 			prodBranch:     config.Get().BranchNames["production"],
-			version:        "",
-			nextVersion:    "",
+			version:        nil,
+			nextVersion:    nil,
 			hasRemotes:     false,
 			state:          0,
 		},
@@ -53,34 +54,36 @@ func (r *Release) PushUndoAction(name, path, vc string, params map[string]interf
 	return nil
 }
 
-func (r *Release) AcquireVersion() (string, error) {
-	curVersion := "0.1"
+func (r *Release) AcquireVersion() (v version.Version, err error) {
 	switch config.Get().AcquireVersionFrom {
 	case "tags":
 		if tags, err := r.Vc.ListTags(nil); err != nil {
-			return "", err
+			return nil, err
 		} else if len(tags) == 0 {
-			return "", errors.New("cannot acquire version from tags, no tags yet")
+			return nil, errors.New("cannot acquire version from tags, no tags yet")
 		} else {
-			curVersion = tags[len(tags)-1]
+			tag := tags[len(tags)-1]
+			if v = version.Parse(tag); v == nil {
+				return nil, fmt.Errorf("failed to parse version from '%s'", tag)
+			}
 		}
 	case "package":
-		accessor, err := project.Open(r.Project.Path)
-		if err != nil {
-			return "", err
-		}
-		if curVersion, err = accessor.Version(); err != nil {
-			return "", err
+		var accessor accessor.ProjectAccessor
+		if accessor, err = project.Open(r.Project.Path); err != nil {
+			return
+		} else if v, err = accessor.ReadVersion(); err != nil {
+			return
 		}
 	default:
-		return "", fmt.Errorf("cannot acquire version from '%s', don't know what to do", config.Get().AcquireVersionFrom)
+		return nil, fmt.Errorf("cannot acquire version from '%s', don't know what to do", config.Get().AcquireVersionFrom)
 	}
-	return curVersion, nil
+	return v, nil
 }
 
 func (r *Release) PrepareContext() error {
 	// acquire current version
-	var curVersion, curBranch string
+	var curVersion version.Version
+	var curBranch string
 	var err error
 	if curVersion, err = r.AcquireVersion(); err != nil {
 		return err
@@ -88,14 +91,17 @@ func (r *Release) PrepareContext() error {
 	if curBranch, err = r.Vc.CurrentBranch(); err != nil {
 		return err
 	}
-	nextVersion := version.Parse(curVersion)
+	// duplicate current version
+	nextVersion := &version.Version{}
+	*nextVersion = curVersion
+	// increment it
 	if err := nextVersion.Increment(0, 1); err != nil {
 		return err
 	}
-	r.Context.releaseBranch = strings.ReplaceAll(r.Context.releaseBranch, "$VERSION", curVersion)
+	r.Context.releaseBranch = strings.ReplaceAll(r.Context.releaseBranch, "$VERSION", curVersion.String())
 	r.Context.startingBranch = curBranch
 	r.Context.version = curVersion
-	r.Context.nextVersion = nextVersion.String()
+	r.Context.nextVersion = *nextVersion
 	r.Context.hasRemotes = false
 
 	remotes := map[string]string{}
@@ -372,8 +378,8 @@ func (r *Release) ReleaseFinish() error {
 	}
 
 	// tag prod branch
-	r.SubStep("Tag " + r.Context.version)
-	if err := r.Vc.Tag(r.Context.version, vcs.TagOptions{Annotated: true, Message: fmt.Sprintf("Release %s: %s", r.Context.version, "TODO")}); err != nil {
+	r.SubStep("Tag " + r.Context.version.String())
+	if err := r.Vc.Tag(r.Context.version.String(), vcs.TagOptions{Annotated: true, Message: fmt.Sprintf("Release %s: %s", r.Context.version, "TODO")}); err != nil {
 		return err
 	}
 
@@ -381,9 +387,9 @@ func (r *Release) ReleaseFinish() error {
 		"name": r.Context.version,
 	})
 
-	r.SubStep("Merge tag " + r.Context.version + " into " + r.Context.devBranch)
+	r.SubStep("Merge tag " + r.Context.version.String() + " into " + r.Context.devBranch)
 	// retro merge tag into dev branch
-	if err := r.Merge(r.Context.version, r.Context.devBranch); err != nil {
+	if err := r.Merge(r.Context.version.String(), r.Context.devBranch); err != nil {
 		return err
 	}
 
@@ -397,7 +403,7 @@ func (r *Release) ReleaseFinish() error {
 }
 
 func (r *Release) BumpVersion() error {
-	r.Step("Bump version")
+	r.Step("Bump version: %s -> %s", r.Context.version, r.Context.nextVersion)
 	r.PushUndoAction("bump_version", r.Project.Path, r.Vc.Name(), map[string]interface{}{
 		"oldVersion": r.Context.version,
 		"newVersion": r.Context.nextVersion,

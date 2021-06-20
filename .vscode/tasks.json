@@ -62,6 +62,75 @@
         "showReuseMessage": true,
         "clear": true
       }
-    }
+    },
+    {
+      "label": "benchmark",
+      "type": "shell",
+      "command": "go",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "args": [
+        "test", "-bench=.", "-v", "./..."
+      ],
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
+      "label": "test: integration",
+      "type": "shell",
+      "command": "go",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "args": [
+        "test", "-v", "./...", "-tags=integration"
+      ],
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
+      "label": "test: unit",
+      "type": "shell",
+      "command": "go",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "args": [
+        "test", "-v", "./..."
+      ],
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
   ]
 }

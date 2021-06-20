@@ -3,7 +3,18 @@ package accessor
 import (
 	"reflect"
 	"strings"
+
+	"github.com/welschmorgan/go-release-manager/version"
 )
+
+type VersionFileManipulator struct {
+	// Detect if a specific file contains matching version string
+	Detect func(file, content string, currentVersion *version.Version) bool
+
+	// Update a specific file, replacing currentVersion with nextVersion
+	// It returns the modified content
+	Update func(file, content string, currentVersion, nextVersion *version.Version) (string, error)
+}
 
 type ProjectAccessor interface {
 	// Retrieve the name of this accessor
@@ -28,7 +39,13 @@ type ProjectAccessor interface {
 	Open(p string) error
 
 	// Retrieve the current project version
-	Version() (string, error)
+	ReadVersion() (version.Version, error)
+
+	// Define the current project version
+	WriteVersion(v *version.Version) error
+
+	// Retrieve the possible list of files that need version updates
+	VersionManipulators() map[string]VersionFileManipulator
 
 	// Retrieve the current project name
 	Name() (string, error)

@@ -8,30 +8,50 @@ import (
 
 func TestVersionParsingSimple(t *testing.T) {
 	v := Parse("1.0.0")
-	assert.Equal(t, uint8(3), v.numParts)
-	assert.Equal(t, []byte{}, v.suffix)
-	assert.Equal(t, [][]byte{[]byte("1"), []byte("0"), []byte("0")}, v.parts)
+	assert.Equal(t, 3, v.NumNonEmptyParts())
+	assert.Equal(t, []string{"1", "0", "0"}, v.NonEmptyParts())
 }
 
-func TestVersionParsingWithSuffix(t *testing.T) {
+func TestVersionParsingSemverPreRelease(t *testing.T) {
 	v := Parse("1.0.0-rc0")
-	assert.Equal(t, uint8(3), v.numParts)
-	assert.Equal(t, []byte("rc0"), v.suffix)
-	assert.Equal(t, [][]byte{[]byte("1"), []byte("0"), []byte("0")}, v.parts)
+	assert.Equal(t, 4, v.NumNonEmptyParts())
+	assert.Equal(t, []string{"1", "0", "0", "rc0"}, v.NonEmptyParts())
+}
+func TestVersionParsingSemverBuildMetaTag(t *testing.T) {
+	hash := "sadfeed44"
+	v := Parse("1.0.0+" + hash)
+	assert.Equal(t, 4, v.NumNonEmptyParts())
+	assert.Equal(t, []string{"1", "0", "0", hash}, v.NonEmptyParts())
 }
 
-func TestVersionIncrementBuild(t *testing.T) {
+func TestVersionIncrementPreRelease(t *testing.T) {
+	v := NewVersion(0, 0, 0, 1, "rc1")
+	if err := v.Increment(PreRelease, 1); err != nil {
+		t.Error(err)
+	} else {
+		assert.Equal(t, "0.0.0.1-rc2", v.String())
+	}
+}
+
+func TestVersionIncrementBuildMetaTag(t *testing.T) {
+	v := NewVersion(0, 0, 0, 1, 0, "", "234234sdf")
+	if err := v.Increment(BuildMetaTag, 1); err == nil {
+		t.Fatalf("PreRelease part of version should not be incrementable")
+	}
+}
+
+func TestVersionIncrementRevision(t *testing.T) {
 	v := NewVersion(0, 0, 0, 1)
-	if err := v.Increment(3, 1); err != nil {
+	if err := v.Increment(Revision, 1); err != nil {
 		t.Error(err)
 	} else {
 		assert.Equal(t, "0.0.0.2", v.String())
 	}
 }
 
-func TestVersionIncrementPatch(t *testing.T) {
+func TestVersionIncrementBuild(t *testing.T) {
 	v := NewVersion(0, 0, 1, 1)
-	if err := v.Increment(2, 1); err != nil {
+	if err := v.Increment(Build, 1); err != nil {
 		t.Error(err)
 	} else {
 		assert.Equal(t, "0.0.2.0", v.String())
@@ -40,7 +60,7 @@ func TestVersionIncrementPatch(t *testing.T) {
 
 func TestVersionIncrementMinor(t *testing.T) {
 	v := NewVersion(0, 1, 1, 1)
-	if err := v.Increment(1, 1); err != nil {
+	if err := v.Increment(Minor, 1); err != nil {
 		t.Error(err)
 	} else {
 		assert.Equal(t, "0.2.0.0", v.String())
@@ -49,7 +69,7 @@ func TestVersionIncrementMinor(t *testing.T) {
 
 func TestVersionIncrementMajor(t *testing.T) {
 	v := NewVersion(1, 1, 1, 1)
-	if err := v.Increment(0, 1); err != nil {
+	if err := v.Increment(Major, 1); err != nil {
 		t.Error(err)
 	} else {
 		assert.Equal(t, "2.0.0.0", v.String())
@@ -57,8 +77,7 @@ func TestVersionIncrementMajor(t *testing.T) {
 }
 
 func TestVersionIncrementSuffix(t *testing.T) {
-	v := NewVersion(1, 0, 0, 0)
-	v.suffix = []byte("rc0")
+	v := NewVersion(1, 0, 0, 0, "rc0")
 	if err := v.Increment(4, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -66,7 +85,7 @@ func TestVersionIncrementSuffix(t *testing.T) {
 	}
 }
 
-func TestVersionDecrementBuild(t *testing.T) {
+func TestVersionDecrementRevision(t *testing.T) {
 	v := NewVersion(0, 0, 0, 2)
 	if err := v.Decrement(3, 1); err != nil {
 		t.Error(err)
@@ -75,7 +94,7 @@ func TestVersionDecrementBuild(t *testing.T) {
 	}
 }
 
-func TestVersionDecrementPatch(t *testing.T) {
+func TestVersionDecrementBuild(t *testing.T) {
 	v := NewVersion(0, 0, 2, 1)
 	if err := v.Decrement(2, 1); err != nil {
 		t.Error(err)
@@ -103,11 +122,26 @@ func TestVersionDecrementMajor(t *testing.T) {
 }
 
 func TestVersionDecrementSuffix(t *testing.T) {
-	v := NewVersion(1, 0, 0, 0)
-	v.suffix = []byte("rc1")
+	v := NewVersion(1, 0, 0, 0, "rc1")
 	if err := v.Decrement(4, 1); err != nil {
 		t.Error(err)
 	} else {
 		assert.Equal(t, "1.0.0.0-rc0", v.String())
+	}
+}
+
+func TestVersionDecrementPreRelease(t *testing.T) {
+	v := NewVersion(0, 0, 0, 1, "rc2")
+	if err := v.Decrement(PreRelease, 1); err != nil {
+		t.Error(err)
+	} else {
+		assert.Equal(t, "0.0.0.1-rc1", v.String())
+	}
+}
+
+func TestVersionDecrementBuildMetaTag(t *testing.T) {
+	v := NewVersion(0, 0, 0, 1, 0, "", "234234sdf")
+	if err := v.Decrement(BuildMetaTag, 1); err == nil {
+		t.Fatalf("PreRelease part of version should not be decrementable")
 	}
 }

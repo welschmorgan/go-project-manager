@@ -1,16 +1,56 @@
 package version
 
 import (
-	"bytes"
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
-type Version struct {
-	numParts uint8
-	suffix   []byte
-	parts    [][]byte
+const DETECTION_REGEX = `^(?P<major>\d+?|)(\W(?P<minor>\d+?)|)(\W(?P<build>\d+?)|)(\W(?P<revision>\d+?)|)(\W(?P<preRelease>[\d\w]+?)|)(\W(?P<buildMetaTag>[\d\w]+?)|)$`
+
+type Version []string
+
+type VersionPart uint8
+
+const (
+	Major VersionPart = iota
+	Minor
+	Build
+	Revision
+	PreRelease
+	BuildMetaTag
+)
+
+type versionPartData struct {
+	id        VersionPart
+	name      string
+	separator string
+}
+
+var versionParts = map[VersionPart]versionPartData{
+	Major:        {Major, "major", "."},
+	Minor:        {Minor, "minor", "."},
+	Build:        {Build, "build", "."},
+	Revision:     {Revision, "revision", "."},
+	PreRelease:   {PreRelease, "preRelease", "-"},
+	BuildMetaTag: {BuildMetaTag, "buildMetaTag", "+"},
+}
+
+func (p VersionPart) String() string {
+	return p.Name()
+}
+
+func (p VersionPart) Id() uint8 {
+	return uint8(versionParts[p].id)
+}
+
+func (p VersionPart) Name() string {
+	return versionParts[p].name
+}
+
+func (p VersionPart) Separator() string {
+	return versionParts[p].separator
 }
 
 var Zero = NewVersion(0, 0, 0)
@@ -19,52 +59,96 @@ var FirstMinor = NewVersion(0, 1, 0)
 var FirstPatch = NewVersion(0, 0, 1)
 var FirstBuild = NewVersion(0, 0, 0, 1)
 
-func NewVersion(parts ...int) *Version {
-	v := &Version{
-		numParts: uint8(len(parts)),
-		suffix:   []byte{},
-		parts:    make([][]byte, len(parts)),
-	}
+func NewVersion(parts ...interface{}) Version {
+	v := Version(make([]string, len(parts)))
 	for i, p := range parts {
-		v.parts[i] = strconv.AppendInt(v.parts[i], int64(p), 32)
+		v[i] = fmt.Sprint(p)
 	}
 	return v
 }
 
-func Parse(s string) *Version {
-	v := &Version{
-		numParts: 0,
-		suffix:   []byte{},
-		parts:    [][]byte{},
+func Parse(s string) Version {
+	v := Version(make([]string, len(versionParts)))
+	format := regexp.MustCompile(DETECTION_REGEX)
+	matches := format.FindStringSubmatch(s)
+	for _, vp := range versionParts {
+		idx := format.SubexpIndex(vp.name)
+		val := strings.TrimSpace(matches[idx])
+		if len(val) > 0 {
+			v[vp.id] = val
+		}
 	}
-	suffix := bytes.SplitN([]byte(s), []byte("-"), 2)
-	if len(suffix) > 1 {
-		v.suffix = suffix[1]
-	}
-	v.parts = bytes.SplitN(suffix[0], []byte("."), 4)
-	v.numParts = uint8(len(v.parts))
 	return v
 }
 
-func (v *Version) GetString(i uint8) (string, error) {
-	if b, err := v.GetBytes(i); err != nil {
-		return "", err
+func JoinStrings(parts ...string) string {
+	params := []interface{}{}
+	for _, p := range parts {
+		params = append(params, p)
+	}
+	return Join(params...)
+}
+
+func Join(parts ...interface{}) string {
+	v := ""
+	pval := ""
+	for i, p := range parts {
+		pval = fmt.Sprint(p)
+		if len(pval) > 0 {
+			if len(v) > 0 {
+				v += VersionPart(i).Separator()
+			}
+			v += pval
+		}
+	}
+	return v
+}
+
+func (v Version) IsEmpty(i VersionPart) bool {
+	if len(v) > int(i) {
+		return len(v[i]) != 0
+	}
+	return true
+}
+
+func (v Version) NonEmptyParts() []string {
+	ret := []string{}
+	for _, p := range v {
+		if len(p) > 0 {
+			ret = append(ret, p)
+		}
+	}
+	return ret
+}
+
+func (v Version) Len() int {
+	return len(v)
+}
+
+func (v Version) NumNonEmptyParts() int {
+	return len(v.NonEmptyParts())
+}
+
+func (v Version) HasNonEmptyParts() bool {
+	return len(v.NonEmptyParts()) != 0
+}
+
+func (v Version) GetString(i VersionPart) (string, error) {
+	if uint8(i) > uint8(len(v)) {
+		return "", fmt.Errorf("%d/%d: index out of bounds", i, len(v))
+	}
+	return v[i], nil
+}
+
+func (v Version) GetBytes(i VersionPart) ([]byte, error) {
+	if b, err := v.GetString(i); err != nil {
+		return nil, err
 	} else {
-		return string(b), nil
+		return []byte(b), nil
 	}
 }
 
-func (v *Version) GetBytes(i uint8) ([]byte, error) {
-	if i > uint8(len(v.parts)) {
-		return nil, fmt.Errorf("%d/%d: index out of bounds", i, len(v.parts))
-	}
-	if i == uint8(len(v.parts)) {
-		return v.suffix, nil
-	}
-	return v.parts[i], nil
-}
-
-func (v *Version) GetInt(i uint8) (int, error) {
+func (v Version) GetInt(i VersionPart) (int, error) {
 	if val, err := v.GetString(i); err != nil {
 		return -1, err
 	} else if ret, err := strconv.ParseInt(val, 10, 32); err != nil {
@@ -74,27 +158,47 @@ func (v *Version) GetInt(i uint8) (int, error) {
 	}
 }
 
-func (v *Version) SetString(i uint8, val string) error {
-	return v.SetBytes(i, []byte(val))
+func (v Version) MustGetString(i VersionPart) string {
+	if val, err := v.GetString(i); err != nil {
+		panic(err)
+	} else {
+		return val
+	}
 }
 
-func (v *Version) SetBytes(i uint8, val []byte) error {
-	if i > uint8(len(v.parts)) {
-		return fmt.Errorf("%d/%d: index out of bounds", i, len(v.parts))
+func (v Version) MustGetBytes(i VersionPart) []byte {
+	if val, err := v.GetBytes(i); err != nil {
+		panic(err)
+	} else {
+		return val
 	}
-	if i == uint8(len(v.parts)) {
-		v.suffix = val
-		return nil
+}
+
+func (v Version) MustGetInt(i VersionPart) int {
+	if val, err := v.GetInt(i); err != nil {
+		panic(err)
+	} else {
+		return val
 	}
-	v.parts[i] = val
+}
+
+func (v Version) SetString(i VersionPart, val string) error {
+	if uint8(i) > uint8(len(v)) {
+		return fmt.Errorf("%d/%d: index out of bounds", i, len(v))
+	}
+	v[i] = string(val)
 	return nil
 }
 
-func (v *Version) SetInt(i uint8, val int) error {
+func (v Version) SetBytes(i VersionPart, val []byte) error {
+	return v.SetString(i, string(val))
+}
+
+func (v Version) SetInt(i VersionPart, val int) error {
 	return v.SetString(i, fmt.Sprintf("%d", val))
 }
 
-func (v *Version) Increment(i uint8, step int) error {
+func (v Version) Increment(i VersionPart, step int) error {
 	if val, err := v.GetString(i); err != nil {
 		return err
 	} else if step <= 0 {
@@ -113,8 +217,8 @@ func (v *Version) Increment(i uint8, step int) error {
 			if err = v.SetString(i, fmt.Sprintf("%s%d", prefix, int(ival)+step)); err != nil {
 				return err
 			}
-			for j := i + 1; j < uint8(len(v.parts)); j++ {
-				if err = v.SetInt(j, 0); err != nil {
+			for j := uint8(i + 1); j < uint8(len(v)); j++ {
+				if err = v.SetInt(VersionPart(j), 0); err != nil {
 					return err
 				}
 			}
@@ -123,8 +227,8 @@ func (v *Version) Increment(i uint8, step int) error {
 			if err = v.SetInt(i, int(ival)+step); err != nil {
 				return err
 			}
-			for j := i + 1; j < uint8(len(v.parts)); j++ {
-				if err = v.SetInt(j, 0); err != nil {
+			for j := uint8(i + 1); j < uint8(len(v)); j++ {
+				if err = v.SetInt(VersionPart(j), 0); err != nil {
 					return err
 				}
 			}
@@ -133,7 +237,7 @@ func (v *Version) Increment(i uint8, step int) error {
 	}
 }
 
-func (v *Version) Decrement(i uint8, step int) error {
+func (v Version) Decrement(i VersionPart, step int) error {
 	if val, err := v.GetString(i); err != nil {
 		return err
 	} else if step <= 0 {
@@ -152,8 +256,8 @@ func (v *Version) Decrement(i uint8, step int) error {
 			if err = v.SetString(i, fmt.Sprintf("%s%d", prefix, int(ival)-step)); err != nil {
 				return err
 			}
-			for j := i + 1; j < uint8(len(v.parts)); j++ {
-				if err = v.SetInt(j, 0); err != nil {
+			for j := uint8(i + 1); j < uint8(len(v)); j++ {
+				if err = v.SetInt(VersionPart(j), 0); err != nil {
 					return err
 				}
 			}
@@ -162,8 +266,8 @@ func (v *Version) Decrement(i uint8, step int) error {
 			if err = v.SetInt(i, int(ival)-step); err != nil {
 				return err
 			}
-			for j := i + 1; j < uint8(len(v.parts)); j++ {
-				if err = v.SetInt(j, 0); err != nil {
+			for j := uint8(i + 1); j < uint8(len(v)); j++ {
+				if err = v.SetInt(VersionPart(j), 0); err != nil {
 					return err
 				}
 			}
@@ -172,16 +276,96 @@ func (v *Version) Decrement(i uint8, step int) error {
 	}
 }
 
-func (v *Version) String() string {
-	s := ""
-	for _, p := range v.parts {
-		if len(s) > 0 {
-			s += "."
-		}
-		s += string(p)
-	}
-	if len(v.suffix) > 0 {
-		s += "-" + string(v.suffix)
-	}
-	return s
+func (v Version) String() string {
+	return JoinStrings(v...)
+}
+
+func (v Version) Major() (val string, err error) {
+	val, err = v.GetString(Major)
+	return
+}
+
+func (v Version) MajorInt() (val int, err error) {
+	val, err = v.GetInt(Major)
+	return
+}
+
+func (v Version) MajorBytes() (val []byte, err error) {
+	val, err = v.GetBytes(Major)
+	return
+}
+
+func (v Version) Minor() (val string, err error) {
+	val, err = v.GetString(Minor)
+	return
+}
+
+func (v Version) MinorInt() (val int, err error) {
+	val, err = v.GetInt(Minor)
+	return
+}
+
+func (v Version) MinorBytes() (val []byte, err error) {
+	val, err = v.GetBytes(Minor)
+	return
+}
+
+func (v Version) Build() (val string, err error) {
+	val, err = v.GetString(Build)
+	return
+}
+
+func (v Version) BuildInt() (val int, err error) {
+	val, err = v.GetInt(Build)
+	return
+}
+
+func (v Version) BuildBytes() (val []byte, err error) {
+	val, err = v.GetBytes(Build)
+	return
+}
+
+func (v Version) Revision() (val string, err error) {
+	val, err = v.GetString(Revision)
+	return
+}
+
+func (v Version) RevisionInt() (val int, err error) {
+	val, err = v.GetInt(Revision)
+	return
+}
+
+func (v Version) RevisionBytes() (val []byte, err error) {
+	val, err = v.GetBytes(Revision)
+	return
+}
+
+func (v Version) PreRelease() (val string, err error) {
+	val, err = v.GetString(PreRelease)
+	return
+}
+
+func (v Version) PreReleaseInt() (val int, err error) {
+	val, err = v.GetInt(PreRelease)
+	return
+}
+
+func (v Version) PreReleaseBytes() (val []byte, err error) {
+	val, err = v.GetBytes(PreRelease)
+	return
+}
+
+func (v Version) BuildMetaTag() (val string, err error) {
+	val, err = v.GetString(BuildMetaTag)
+	return
+}
+
+func (v Version) BuildMetaTagInt() (val int, err error) {
+	val, err = v.GetInt(BuildMetaTag)
+	return
+}
+
+func (v Version) BuildMetaTagBytes() (val []byte, err error) {
+	val, err = v.GetBytes(BuildMetaTag)
+	return
 }
