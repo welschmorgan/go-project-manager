@@ -2,11 +2,16 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/snowzach/rotatefilehook"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 )
 
 const CALLER_FRAME = 3
@@ -15,11 +20,33 @@ const LOGGER_MAIN = "main"
 var loggers = map[string]*log.Logger{}
 
 func init() {
+}
+
+func Setup() error {
+	log.SetLevel(config.Get().Verbose.LogLevel())
+
+	logDir := config.Get().Workspace.LogFolder()
+	println("LOG FOLDER: " + logDir)
+	fs.Mkdir(logDir)
+
+	// instanciate main logger
 	Logger(LOGGER_MAIN)
+
+	return nil
+}
+
+func SetOutput(w io.Writer) {
+	log.SetOutput(w)
+	for _, logger := range loggers {
+		logger.SetOutput(w)
+	}
 }
 
 func SetLevel(level log.Level) {
 	log.SetLevel(level)
+	for _, logger := range loggers {
+		logger.SetLevel(level)
+	}
 }
 
 func Logger(n string) *log.Logger {
@@ -34,6 +61,33 @@ func Logger(n string) *log.Logger {
 				return
 			},
 		})
+
+		// file rotation
+		// loggers[n].SetOutput(io.MultiWriter(os.Stdout, rotator))
+
+		logDir := config.Get().Workspace.LogFolder()
+		if rotatorHook, err := rotatefilehook.NewRotateFileHook(rotatefilehook.RotateFileConfig{
+			Filename:   filepath.Join(logDir, n+".log"),
+			MaxSize:    5, // megabytes
+			MaxBackups: 3,
+			MaxAge:     28, //days
+			Level:      log.GetLevel(),
+			Formatter: &log.TextFormatter{
+				TimestampFormat:        time.RFC822,
+				DisableColors:          true,
+				PadLevelText:           true,
+				DisableLevelTruncation: true,
+				CallerPrettyfier: func(f *runtime.Frame) (function, file string) {
+					function, file = fileInfo(CALLER_FRAME + 9)
+					return
+				},
+			},
+		}); err != nil {
+			panic(err)
+		} else {
+			// log.SetOutput(io.MultiWriter(os.Stdout, rotator))
+			loggers[n].AddHook(rotatorHook)
+		}
 	}
 	return loggers[n]
 }

@@ -173,7 +173,7 @@ func (r *Release) Undo() error {
 	for i := len(r.UndoActions) - 1; i >= 0; i-- {
 		action := r.UndoActions[i]
 		// if !action.Executed {
-		log.Debugf("%s[\033[1;34m*\033[0m] Undoing release step #%d: %s\n", strings.Repeat("\t", config.Get().Indent), i, action.Title)
+		log.Debugf("%s[\033[1;34m*\033[0m] Undoing release step #%d: %s - path = %s\n", strings.Repeat("\t", config.Get().Indent), i, action.Title, action.Path)
 		config.Get().Indent++
 		if err := action.Run(); err != nil {
 			log.Errorf("%s\033[1;31merror\033[0m: %s\n", strings.Repeat("\t", config.Get().Indent), err.Error())

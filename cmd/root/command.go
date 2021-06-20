@@ -51,20 +51,24 @@ func init() {
 		enumflag.New(&config.Get().Verbose, "verbose", VerboseLevels, enumflag.EnumCaseInsensitive),
 		"verbose",
 		"v",
-		"show additionnal log messages; can be 'none', 'low', 'normal', 'high'")
+		"show additionnal log messages; can be 'none', 'low', 'normal', 'high', 'max'")
 	viper.BindPFlag("verbose", Command.PersistentFlags().Lookup("verbose"))
 
 	// dry run
-	Command.PersistentFlags().BoolVarP(&config.Get().DryRun, "dry-run", "n", config.Get().DryRun, "simulate commande execution, do not execute them")
-	viper.BindPFlag("dry-run", Command.PersistentFlags().Lookup("dry-run"))
+	Command.PersistentFlags().BoolVarP(&config.Get().DryRun, "dry_run", "n", config.Get().DryRun, "simulate commande execution, do not execute them")
+	viper.BindPFlag("dry_run", Command.PersistentFlags().Lookup("dry_run"))
 
 	// change working dir
-	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working-directory", "C", config.Get().WorkingDirectory, "change working directory")
-	viper.BindPFlag("working-directory", Command.PersistentFlags().Lookup("working-directory"))
+	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working_directory", "C", config.Get().WorkingDirectory, "change working directory")
+	viper.BindPFlag("working_directory", Command.PersistentFlags().Lookup("working_directory"))
 
 	// define workspaces root
-	Command.PersistentFlags().StringVar(&config.Get().WorkspacesRoot, "workspaces-root", config.Get().WorkspacesRoot, "The root folder where to find workspaces")
-	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces-root"))
+	Command.PersistentFlags().StringVar(&config.Get().WorkspacesRoot, "workspaces_root", config.Get().WorkspacesRoot, "The root folder where to find workspaces")
+	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces_root"))
+
+	// define log output dir
+	Command.PersistentFlags().StringVar(&config.Get().LogFolder, "log_folder", config.Get().LogFolder, "change where to write logs")
+	viper.BindPFlag("log_folder", Command.PersistentFlags().Lookup("log_folder"))
 
 	// Command.ActionAddCommand(addCmd)
 	Command.AddCommand(initCommand.Command)
@@ -99,15 +103,21 @@ func initConfig() {
 		}
 	}
 
-	log.SetLevel(config.Get().Verbose.LogLevel())
-
-	log.Debugf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
-
+	if len(config.Get().WorkingDirectory) != 0 {
+		config.Get().Workspace.SetPath(config.Get().WorkingDirectory)
+		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.Path())
+	}
 	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
 		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
 			fmt.Fprintf(os.Stderr, "\033[1;33merror\033[0m: %s\n", err.Error())
 		}
 	}
+
+	if err := log.Setup(); err != nil {
+		panic(err.Error())
+	}
+	log.Debugf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
+
 	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {
 		panic(err.Error())
 	}
@@ -123,10 +133,5 @@ func initConfig() {
 		panic(err.Error())
 	} else {
 		log.Debugf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
-	}
-
-	if len(config.Get().WorkingDirectory) != 0 {
-		config.Get().Workspace.SetPath(config.Get().WorkingDirectory)
-		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.GetPath())
 	}
 }

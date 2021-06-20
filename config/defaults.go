@@ -11,6 +11,7 @@ var (
 	DefaultDryRun             bool         = false
 	DefaultInteractive        bool         = false
 	DefaultAcquireVersionFrom string       = "package"
+	DefaultLogFolder          string       = "$WORKSPACE/logs"
 
 	instance *Config
 )

@@ -11,8 +11,8 @@ import (
 func askPath(wksp *config.Workspace) error {
 	var dir string
 	var err error
-	var path string = wksp.GetPath()
-	if len(strings.TrimSpace(wksp.GetPath())) == 0 {
+	var path string = wksp.Path()
+	if len(strings.TrimSpace(wksp.Path())) == 0 {
 		if dir, err = os.Getwd(); err != nil {
 			return err
 		}

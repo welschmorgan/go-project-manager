@@ -83,11 +83,17 @@ func (w *Workspace) Write() ([]byte, error) {
 	return yaml.Marshal(w)
 }
 
-func (w *Workspace) GetPath() string {
+func (w *Workspace) Path() string {
 	return w.path
 }
 
 func (w *Workspace) SetPath(p string) {
 	w.path = p
-	fs.SanitizePath(w.path)
+	fs.SanitizePath(w.path, nil)
+}
+
+func (w *Workspace) LogFolder() string {
+	return fs.SanitizePath(Get().LogFolder, map[string]string{
+		"WORKSPACE": w.Path(),
+	})
 }

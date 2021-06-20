@@ -12,6 +12,20 @@ import (
 	"github.com/welschmorgan/go-release-manager/log"
 )
 
+type RunOptions struct {
+	FailCommandWhenStderrContainsErrors bool
+	TreatWarningsAsErrors               bool
+}
+
+var defaultRunOptions = RunOptions{
+	FailCommandWhenStderrContainsErrors: true,
+	TreatWarningsAsErrors:               false,
+}
+
+func DefaultRunOptions() RunOptions {
+	return defaultRunOptions
+}
+
 var (
 	SHOW_ERRORS = true
 )
@@ -29,6 +43,7 @@ type Command struct {
 	*exec.Cmd
 	name        string
 	args        []string
+	options     RunOptions
 	stdoutPipe  io.ReadCloser
 	stderrPipe  io.ReadCloser
 	stdoutLines []string
@@ -36,13 +51,26 @@ type Command struct {
 }
 
 func NewCommand(name string, args ...string) *Command {
+	return NewCommandWithOptions(name, args, defaultRunOptions)
+}
+
+func NewCommandWithOptions(name string, args []string, options RunOptions) *Command {
 	return &Command{
 		Cmd:         exec.Command(name, args...),
 		name:        name,
+		options:     defaultRunOptions,
 		args:        args,
 		stdoutLines: []string{},
 		stderrLines: []string{},
 	}
+}
+
+func (c *Command) SetOptions(o RunOptions) {
+	c.options = o
+}
+
+func (c *Command) Options() RunOptions {
+	return c.options
 }
 
 func (c *Command) ArgString() string {
@@ -92,7 +120,7 @@ func (c *Command) readAll(r *bytes.Buffer, f CommandOutputFilter) []string {
 	lines := map[string]bool{}
 	retLines := []string{}
 	for line, err := r.ReadString('\n'); err == nil; line, err = r.ReadString('\n') {
-		log.Debugln(line)
+		log.Traceln(line)
 		if f&CommandOutputTrim != CommandOutputNoFilter {
 			line = strings.TrimSpace(line)
 		}
@@ -112,7 +140,7 @@ func (c *Command) readAll(r *bytes.Buffer, f CommandOutputFilter) []string {
 
 func (c *Command) Run(filter CommandOutputFilter) error {
 	argStr := c.ArgString()
-	log.Debugf("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), c.name, argStr)
+	log.Tracef("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), c.name, argStr)
 
 	var wg sync.WaitGroup
 	var bufStdout *bytes.Buffer = bytes.NewBufferString("")
@@ -148,6 +176,10 @@ func (c *Command) Run(filter CommandOutputFilter) error {
 
 		c.stdoutLines = c.readAll(bufStdout, filter)
 		c.stderrLines = c.readAll(bufStderr, filter|^CommandOutputUnique|^CommandOutputKeepEmpty)
+
+		if len(c.stderrLines) > 0 && c.options.FailCommandWhenStderrContainsErrors && (c.ExitCode() != 0 || c.options.TreatWarningsAsErrors) {
+			return fmt.Errorf("failed to run command '%s', %s", c.name, c.Stderr())
+		}
 	}
 
 	return nil
@@ -155,12 +187,21 @@ func (c *Command) Run(filter CommandOutputFilter) error {
 
 // Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
 func RunCommand(name string, args ...string) (exitCode int, stdout []string, stderr []string, err error) {
-	cmd := NewCommand(name, args...)
+	return RunCommandWithOptions(name, args, defaultRunOptions)
+}
+
+// Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
+func RunCommandWithOptions(name string, args []string, options RunOptions) (exitCode int, stdout []string, stderr []string, err error) {
+	cmd := NewCommandWithOptions(name, args, options)
 	err = cmd.Run(CommandOutputTrim | CommandOutputUnique)
 	return cmd.ExitCode(), cmd.StdoutLines(), cmd.StderrLines(), err
 }
 
-func DumpCommandErrors(exitCode int, errs []string) {
+func DumpCommandErrors(exitCode int, errs ...string) {
+	DumpCommandErrorsWithOptions(exitCode, errs, defaultRunOptions)
+}
+
+func DumpCommandErrorsWithOptions(exitCode int, errs []string, options RunOptions) {
 	level := ""
 	color := ""
 	indent := strings.Repeat("\t", config.Get().Indent)
@@ -172,7 +213,7 @@ func DumpCommandErrors(exitCode int, errs []string) {
 		color = "\033[1;33m"
 	}
 	logErr := func(err string) {
-		if level == "warning" {
+		if level == "warning" && !options.TreatWarningsAsErrors {
 			log.Warnf("%s%s%s: %v\n", indent, color, "\033[0m", err)
 		} else {
 			log.Errorf("%s%s%s: %v\n", indent, color, "\033[0m", err)

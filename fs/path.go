@@ -6,16 +6,20 @@ import (
 	"strings"
 )
 
-func SanitizePath(p string) (string, error) {
+func SanitizePath(p string, repl map[string]string) string {
 	home := ""
 	temp := os.TempDir()
 	if usr, err := user.Current(); err != nil {
-		return "", err
+		panic(err)
 	} else {
 		home = usr.HomeDir
 	}
-	p = strings.Replace(p, "$HOME", home, -1)
-	p = strings.Replace(p, "$TMP_DIR", temp, -1)
-	p = strings.Replace(p, "$TMP", temp, -1)
-	return p, nil
+	p = strings.ReplaceAll(p, "$HOME", home)
+	p = strings.ReplaceAll(p, "$TMP_DIR", temp)
+	p = strings.ReplaceAll(p, "$TMP", temp)
+	for k, v := range repl {
+		k = "$" + strings.TrimPrefix(k, "$")
+		p = strings.ReplaceAll(p, k, v)
+	}
+	return p
 }

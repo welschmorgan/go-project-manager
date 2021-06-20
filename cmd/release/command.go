@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/ui"
 )
 
@@ -30,6 +31,7 @@ var Command = &cobra.Command{
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGQUIT)
 		rollback := func() {
 			fmt.Fprintf(os.Stderr, "Rolling back all releases...\n")
+			fs.DumpDirStack(os.Stderr)
 			errs := []error{}
 			for _, r := range releases {
 				// fmt.Fprintf(os.Stderr, "  Rolling back %s v%s:\n", r.Project.Name, r.Context.version)

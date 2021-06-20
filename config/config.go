@@ -16,6 +16,7 @@ type Config struct {
 	WorkspacePath     string
 	DryRun            bool
 	Interactive       bool
+	LogFolder         string
 }
 
 func NewConfig() (*Config, error) {
@@ -33,6 +34,7 @@ func NewConfig() (*Config, error) {
 			WorkspacePath:     filepath.Join(cwd, DefaultWorkspaceFilename),
 			DryRun:            DefaultDryRun,
 			Interactive:       DefaultInteractive,
+			LogFolder:         DefaultLogFolder,
 		}, nil
 	}
 }

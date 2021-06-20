@@ -96,7 +96,7 @@ func (s *MavenScaffolder) Scaffold(ctx *accessor.FinalizationContext) error {
 			for _, line := range stdout {
 				println(line)
 			}
-			exec.DumpCommandErrors(exit, stderr)
+			exec.DumpCommandErrors(exit, stderr...)
 			if err != nil {
 				return fmt.Errorf("failed to generate maven project archetype, %s", err.Error())
 			}

@@ -22,7 +22,7 @@ const projectMenuItemsSubKey = "Name"
 func projectMenuDefaultItem(w *config.Workspace) *config.Project {
 	return &config.Project{
 		Name: fmt.Sprintf("project %2.2d", rand.Int()),
-		Path: w.GetPath() + "/project",
+		Path: w.Path() + "/project",
 	}
 }
 

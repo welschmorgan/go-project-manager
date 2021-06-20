@@ -61,7 +61,7 @@ func NewUndoAction(name, path, vc string, params map[string]interface{}) (*UndoA
 		SourceControl: vc,
 		Params:        params,
 	}
-	if vc, err := vcs.Detect(path); err != nil {
+	if vc, err := vcs.Open(path); err != nil {
 		return nil, err
 	} else {
 		act.VC = vc
@@ -80,10 +80,9 @@ func NewUndoAction(name, path, vc string, params map[string]interface{}) (*UndoA
 
 func (u *UndoAction) Run() error {
 	defer func() { u.Executed = true }()
-	// println("cd " + u.Path)
-	// if err := os.Chdir(u.Path); err != nil {
-	// 	return err
-	// }
+	if err := os.Chdir(u.Path); err != nil {
+		return err
+	}
 	switch u.Name {
 	case "stash_save":
 		return u.undoStashSave()

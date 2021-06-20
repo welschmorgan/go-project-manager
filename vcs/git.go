@@ -58,7 +58,7 @@ func (g *Git) ListBranches(options VersionControlOptions) ([]string, error) {
 		args = append(args, "--set-upstream-to", opts.SetUpstreamTo)
 	}
 	code, out, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (g *Git) Open(p string) error {
 					"fake-for-dry-run": "http://fake.com",
 				}
 			} else {
-				log.Warnf("no remotes configured for '%s'\n", g.path)
+				log.Tracef("no remotes configured for '%s'\n", g.path)
 			}
 		}
 		g.url = ""
@@ -112,7 +112,7 @@ func (g *Git) Status(options VersionControlOptions) ([]string, error) {
 		args = append(args, "--short")
 	}
 	code, out, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 		args = append(args, opts.Message)
 	}
 	code, out, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func (g *Git) DeleteBranch(name string, options VersionControlOptions) error {
 	}
 	if opts.Local {
 		code, _, errTxt, err := exec.RunCommand("git", []string{"branch", "-D", name}...)
-		exec.DumpCommandErrors(code, errTxt)
+		exec.DumpCommandErrors(code, errTxt...)
 		if err != nil {
 			return err
 		}
@@ -182,7 +182,7 @@ func (g *Git) DeleteBranch(name string, options VersionControlOptions) error {
 			remoteName = "origin"
 		}
 		code, _, errTxt, err := exec.RunCommand("git", []string{"push", remoteName, ":" + name}...)
-		exec.DumpCommandErrors(code, errTxt)
+		exec.DumpCommandErrors(code, errTxt...)
 		if err != nil {
 			return err
 		}
@@ -212,7 +212,7 @@ func (g *Git) Clone(url, path string, options VersionControlOptions) error {
 		args = append(args, "--branch", opts.Branch)
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 func (g *Git) Checkout(branch string, options VersionControlOptions) error {
@@ -244,7 +244,7 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 		args = append(args, strings.TrimSpace(opts.StartingPoint))
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -271,7 +271,7 @@ func (g *Git) Reset(options VersionControlOptions) error {
 		args = append(args, strings.TrimSpace(opts.Commit))
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -301,7 +301,7 @@ func (g *Git) Pull(options VersionControlOptions) error {
 		args = append(args, "--tags")
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -328,7 +328,7 @@ func (g *Git) Push(options VersionControlOptions) error {
 		args = append(args, "--force")
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -363,7 +363,7 @@ func (g *Git) Tag(name string, options VersionControlOptions) error {
 		args = append(args, opts.Commit)
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -375,7 +375,7 @@ func (g *Git) CurrentBranch() (string, error) {
 		"rev-parse", "--abbrev-ref", "HEAD",
 	}
 	code, out, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	if err != nil {
 		return "", err
 	}
@@ -419,7 +419,7 @@ func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
 		return err
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 func (g *Git) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
@@ -433,7 +433,7 @@ func (g *Git) ListAuthors(options VersionControlOptions) ([]*config.Person, erro
 	if code, lines, errTxt, err = exec.RunCommand("git", "log", "--format=%cn <%ce>"); err != nil {
 		return nil, err
 	}
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	ret := []*config.Person{}
 	for _, line := range lines {
 		rule := regexp.MustCompile("(.*)<(.*?)>")
@@ -456,7 +456,7 @@ func (g *Git) ListRemotes(options VersionControlOptions) (map[string]string, err
 	if code, lines, errTxt, err = exec.RunCommand("git", "remote", "-v"); err != nil {
 		return nil, err
 	}
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	ret := map[string]string{}
 	for _, line := range lines {
 		rule := regexp.MustCompile(`(\w+)\s+(.*)\s+\((\w+)\)`)
@@ -492,7 +492,7 @@ func (g *Git) ListTags(options VersionControlOptions) ([]string, error) {
 		args = append(args, "--sort=taggerdate")
 	}
 	code, out, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +521,7 @@ func (g *Git) Initialize(path string, options VersionControlOptions) error {
 	}
 	args = append(args, path)
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -557,7 +557,7 @@ func (g *Git) Commit(options VersionControlOptions) error {
 		args = append(args, "-S")
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -585,7 +585,7 @@ func (g *Git) Stage(options VersionControlOptions) error {
 		args = append(args, opts.Files...)
 	}
 	code, _, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return err
 }
 
@@ -598,7 +598,7 @@ func (g *Git) RootCommits() ([]string, error) {
 		"rev-list", "--max-parents=0", "HEAD",
 	}
 	code, out, errTxt, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, errTxt)
+	exec.DumpCommandErrors(code, errTxt...)
 	return out, err
 }
 
@@ -696,7 +696,7 @@ func (g *Git) ExtractLog(options VersionControlOptions) (lines []string, err err
 
 	// run command
 	code, stdout, stderr, err = exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, stderr)
+	exec.DumpCommandErrors(code, stderr...)
 	if err != nil {
 		return
 	}
@@ -722,7 +722,7 @@ func (g *Git) ListStashes() (lines []string, err error) {
 
 	// run command
 	code, stdout, stderr, err := exec.RunCommand("git", args...)
-	exec.DumpCommandErrors(code, stderr)
+	exec.DumpCommandErrors(code, stderr...)
 	if err != nil {
 		return nil, err
 	}
