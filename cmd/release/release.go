@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
@@ -155,7 +156,7 @@ func (r *Release) Do() error {
 }
 
 func (r *Release) Step(n string) {
-	fmt.Fprintf(os.Stderr, "[\033[1;34m*\033[0m] %s\n", n)
+	log.Infof("[\033[1;34m*\033[0m] %s\n", n)
 	config.Get().Indent = 1
 }
 
@@ -166,15 +167,15 @@ func (r *Release) Undo() error {
 		return err
 	}
 
-	fmt.Printf("[\033[1;31m-\033[0m] Undoing release %s for '%s' ...\n", r.Context.version, r.Project.Name)
+	log.Debugf("[\033[1;31m-\033[0m] Undoing release %s for '%s' ...\n", r.Context.version, r.Project.Name)
 	config.Get().Indent++
 	for i := len(r.UndoActions) - 1; i >= 0; i-- {
 		action := r.UndoActions[i]
 		// if !action.Executed {
-		fmt.Printf("%s[\033[1;34m*\033[0m] Undoing release step #%d: %s\n", strings.Repeat("\t", config.Get().Indent), i, action.Title)
+		log.Debugf("%s[\033[1;34m*\033[0m] Undoing release step #%d: %s\n", strings.Repeat("\t", config.Get().Indent), i, action.Title)
 		config.Get().Indent++
 		if err := action.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "%s\033[1;31merror\033[0m: %s\n", strings.Repeat("\t", config.Get().Indent), err.Error())
+			log.Errorf("%s\033[1;31merror\033[0m: %s\n", strings.Repeat("\t", config.Get().Indent), err.Error())
 			errs = append(errs, err)
 		}
 		config.Get().Indent--

@@ -18,7 +18,7 @@ func init() {
 
 func Detect(p string) (accessor.ProjectAccessor, error) {
 	for _, a := range accessor.GetAll() {
-		log.Errorf("%sdetect project: %s - %s\n", strings.Repeat("\t", config.Get().Indent), p, a.AccessorName())
+		log.Infof("%sdetect project: %s - %s\n", strings.Repeat("\t", config.Get().Indent), p, a.AccessorName())
 		if ok, err := a.Detect(p); ok {
 			if err != nil {
 				return nil, err

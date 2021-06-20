@@ -171,22 +171,26 @@ func DumpCommandErrors(exitCode int, errs []string) {
 		level = "warning"
 		color = "\033[1;33m"
 	}
+	logErr := func(err string) {
+		if level == "warning" {
+			log.Warnf("%s%s%s: %v\n", indent, color, "\033[0m", err)
+		} else {
+			log.Errorf("%s%s%s: %v\n", indent, color, "\033[0m", err)
+		}
+	}
 	if SHOW_ERRORS && len(errs) > 0 {
 		if len(errs) == 1 {
-			log.Errorf("%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
+			logErr(errs[0])
 		} else {
-			errStr := ""
+			formattedErrs := []string{}
 			numErrs := 0
 			for _, err := range errs {
 				if len(strings.TrimSpace(err)) > 0 {
-					if len(errStr) > 0 {
-						errStr += "\n"
-					}
-					errStr += fmt.Sprintf("%s\t- %s", indent, strings.TrimSpace(err))
+					formattedErrs = append(formattedErrs, fmt.Sprintf("%s\t- %s", indent, strings.TrimSpace(err)))
 					numErrs += 1
 				}
 			}
-			log.Errorf("%s%s%d %s(s)%s:\n%s\n", indent, color, len(errs), level, "\033[0m", errStr)
+			logErr(fmt.Sprintf("%d %s(s):\n%s\n", len(formattedErrs), level, strings.Join(formattedErrs, "\n")))
 		}
 	}
 }

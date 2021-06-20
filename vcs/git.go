@@ -3,7 +3,6 @@ package vcs
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +11,7 @@ import (
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/exec"
 	"github.com/welschmorgan/go-release-manager/fs"
+	"github.com/welschmorgan/go-release-manager/log"
 )
 
 type Git struct {
@@ -24,9 +24,7 @@ func (g *Git) Name() string { return "Git" }
 func (g *Git) Path() string { return g.path }
 func (g *Git) Url() string  { return g.url }
 func (g *Git) Detect(path string) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Detect")
-	}
+	log.Trace("[VCS_TRACE] Detect")
 	g.path = path
 	if fi, err := os.Stat(filepath.Join(path, ".git")); err != nil {
 		return err
@@ -37,9 +35,7 @@ func (g *Git) Detect(path string) error {
 }
 
 func (g *Git) ListBranches(options VersionControlOptions) ([]string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] ListBranches")
-	}
+	log.Trace("[VCS_TRACE] ListBranches")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts BranchOptions
@@ -73,9 +69,7 @@ func (g *Git) ListBranches(options VersionControlOptions) ([]string, error) {
 }
 
 func (g *Git) Open(p string) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Open")
-	}
+	log.Trace("[VCS_TRACE] Open")
 	g.path = p
 	if remotes, err := g.ListRemotes(nil); err != nil {
 		return err
@@ -99,9 +93,7 @@ func (g *Git) Open(p string) error {
 }
 
 func (g *Git) Status(options VersionControlOptions) ([]string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Status")
-	}
+	log.Trace("[VCS_TRACE] Status")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts StatusOptions
@@ -126,9 +118,7 @@ func (g *Git) Status(options VersionControlOptions) ([]string, error) {
 }
 
 func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Stash")
-	}
+	log.Trace("[VCS_TRACE] Stash")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts StashOptions
@@ -165,9 +155,7 @@ func (g *Git) Stash(options VersionControlOptions) ([]string, error) {
 }
 
 func (g *Git) DeleteBranch(name string, options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] DeleteBranch")
-	}
+	log.Trace("[VCS_TRACE] DeleteBranch")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts DeleteBranchOptions
@@ -201,9 +189,7 @@ func (g *Git) DeleteBranch(name string, options VersionControlOptions) error {
 }
 
 func (g *Git) Clone(url, path string, options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Clone")
-	}
+	log.Trace("[VCS_TRACE] Clone")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts CloneOptions
@@ -228,9 +214,7 @@ func (g *Git) Clone(url, path string, options VersionControlOptions) error {
 	return err
 }
 func (g *Git) Checkout(branch string, options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Checkout")
-	}
+	log.Trace("[VCS_TRACE] Checkout")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts CheckoutOptions
@@ -263,9 +247,7 @@ func (g *Git) Checkout(branch string, options VersionControlOptions) error {
 }
 
 func (g *Git) Reset(options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Reset")
-	}
+	log.Trace("[VCS_TRACE] Reset")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts ResetOptions
@@ -292,9 +274,7 @@ func (g *Git) Reset(options VersionControlOptions) error {
 }
 
 func (g *Git) Pull(options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Pull")
-	}
+	log.Trace("[VCS_TRACE] Pull")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts PullOptions
@@ -324,9 +304,7 @@ func (g *Git) Pull(options VersionControlOptions) error {
 }
 
 func (g *Git) Push(options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Push")
-	}
+	log.Trace("[VCS_TRACE] Push")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts PullOptions
@@ -353,9 +331,7 @@ func (g *Git) Push(options VersionControlOptions) error {
 }
 
 func (g *Git) Tag(name string, options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Tag")
-	}
+	log.Trace("[VCS_TRACE] Tag")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts TagOptions
@@ -390,9 +366,7 @@ func (g *Git) Tag(name string, options VersionControlOptions) error {
 }
 
 func (g *Git) CurrentBranch() (string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] CurrentBranch")
-	}
+	log.Trace("[VCS_TRACE] CurrentBranch")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	args := []string{
@@ -414,9 +388,7 @@ func (g *Git) CurrentBranch() (string, error) {
 }
 
 func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Merge")
-	}
+	log.Trace("[VCS_TRACE] Merge")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var opts MergeOptions
@@ -449,9 +421,7 @@ func (g *Git) Merge(source, dest string, options VersionControlOptions) error {
 	return err
 }
 func (g *Git) ListAuthors(options VersionControlOptions) ([]*config.Person, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] ListAuthors")
-	}
+	log.Trace("[VCS_TRACE] ListAuthors")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var lines []string
@@ -474,9 +444,7 @@ func (g *Git) ListAuthors(options VersionControlOptions) ([]*config.Person, erro
 }
 
 func (g *Git) ListRemotes(options VersionControlOptions) (map[string]string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] ListRemotes")
-	}
+	log.Trace("[VCS_TRACE] ListRemotes")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var lines []string
@@ -499,9 +467,7 @@ func (g *Git) ListRemotes(options VersionControlOptions) (map[string]string, err
 }
 
 func (g *Git) ListTags(options VersionControlOptions) ([]string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] ListTags")
-	}
+	log.Trace("[VCS_TRACE] ListTags")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var err error
@@ -532,9 +498,7 @@ func (g *Git) ListTags(options VersionControlOptions) ([]string, error) {
 }
 
 func (g *Git) Initialize(path string, options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Initialize")
-	}
+	log.Trace("[VCS_TRACE] Initialize")
 	g.path = path
 	fs.Pushd(g.path)
 	defer fs.Popd()
@@ -560,9 +524,7 @@ func (g *Git) Initialize(path string, options VersionControlOptions) error {
 }
 
 func (g *Git) Commit(options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Commit")
-	}
+	log.Trace("[VCS_TRACE] Commit")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var err error
@@ -598,9 +560,7 @@ func (g *Git) Commit(options VersionControlOptions) error {
 }
 
 func (g *Git) Stage(options VersionControlOptions) error {
-	if TRACE {
-		log.Printf("[VCS_TRACE] Stage")
-	}
+	log.Trace("[VCS_TRACE] Stage")
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	var err error
@@ -629,9 +589,7 @@ func (g *Git) Stage(options VersionControlOptions) error {
 
 // Retrieve commits without parents
 func (g *Git) GetRootCommits() ([]string, error) {
-	if TRACE {
-		log.Printf("[VCS_TRACE] GetRootCommits - %s", g.path)
-	}
+	log.Trace("[VCS_TRACE] GetRootCommits - %s", g.path)
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	args := []string{

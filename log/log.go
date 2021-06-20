@@ -15,10 +15,14 @@ const LOGGER_MAIN = "main"
 var loggers = map[string]*log.Logger{}
 
 func init() {
-	CreateLogger(LOGGER_MAIN)
+	Logger(LOGGER_MAIN)
 }
 
-func CreateLogger(n string) *log.Logger {
+func SetLevel(level log.Level) {
+	log.SetLevel(level)
+}
+
+func Logger(n string) *log.Logger {
 	if _, ok := loggers[n]; !ok {
 		loggers[n] = log.New()
 		loggers[n].SetReportCaller(true)
@@ -31,14 +35,6 @@ func CreateLogger(n string) *log.Logger {
 			},
 		})
 	}
-	return loggers[n]
-}
-
-func SetLevel(level log.Level) {
-	log.SetLevel(level)
-}
-
-func Logger(n string) *log.Logger {
 	return loggers[n]
 }
 

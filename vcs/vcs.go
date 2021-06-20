@@ -11,7 +11,6 @@ import (
 
 var (
 	errNotYetImpl = errors.New("not yet implemented")
-	TRACE         = true
 )
 
 type VersionControlSoftware interface {
