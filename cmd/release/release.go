@@ -9,7 +9,6 @@ import (
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project"
-	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
 	"github.com/welschmorgan/go-release-manager/version"
@@ -34,8 +33,13 @@ func NewRelease(p *config.Project) (r *Release, err error) {
 			nextVersion:    nil,
 			hasRemotes:     false,
 			state:          0,
+			accessor:       nil,
 		},
 		UndoActions: []*UndoAction{},
+	}
+
+	if r.Context.accessor, err = project.Open(r.Project.Path); err != nil {
+		return
 	}
 
 	if r.Vc, err = vcs.Open(r.Project.Path); err != nil {
@@ -68,10 +72,7 @@ func (r *Release) AcquireVersion() (v version.Version, err error) {
 			}
 		}
 	case "package":
-		var accessor accessor.ProjectAccessor
-		if accessor, err = project.Open(r.Project.Path); err != nil {
-			return
-		} else if v, err = accessor.ReadVersion(); err != nil {
+		if v, err = r.Context.accessor.ReadVersion(); err != nil {
 			return
 		}
 	default:
@@ -92,16 +93,15 @@ func (r *Release) PrepareContext() error {
 		return err
 	}
 	// duplicate current version
-	nextVersion := &version.Version{}
-	*nextVersion = curVersion
+	nextVersion := version.Clone(curVersion)
 	// increment it
-	if err := nextVersion.Increment(0, 1); err != nil {
+	if err := nextVersion.Increment(version.Major, 1); err != nil {
 		return err
 	}
 	r.Context.releaseBranch = strings.ReplaceAll(r.Context.releaseBranch, "$VERSION", curVersion.String())
 	r.Context.startingBranch = curBranch
 	r.Context.version = curVersion
-	r.Context.nextVersion = *nextVersion
+	r.Context.nextVersion = nextVersion
 	r.Context.hasRemotes = false
 
 	remotes := map[string]string{}
@@ -384,7 +384,7 @@ func (r *Release) ReleaseFinish() error {
 	}
 
 	r.PushUndoAction("create_tag", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"name": r.Context.version,
+		"name": r.Context.version.String(),
 	})
 
 	r.SubStep("Merge tag " + r.Context.version.String() + " into " + r.Context.devBranch)
@@ -402,8 +402,11 @@ func (r *Release) ReleaseFinish() error {
 	return nil
 }
 
-func (r *Release) BumpVersion() error {
+func (r *Release) BumpVersion() (err error) {
 	r.Step("Bump version: %s -> %s", r.Context.version, r.Context.nextVersion)
+	if err = r.Context.accessor.WriteVersion(&r.Context.nextVersion); err != nil {
+		return
+	}
 	r.PushUndoAction("bump_version", r.Project.Path, r.Vc.Name(), map[string]interface{}{
 		"oldVersion": r.Context.version,
 		"newVersion": r.Context.nextVersion,

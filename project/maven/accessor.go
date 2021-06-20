@@ -81,19 +81,25 @@ func (a *ProjectAccessor) WriteVersion(v *version.Version) (err error) {
 	if currentVersion, err = a.ReadVersion(); err != nil {
 		return
 	}
+	var fi os.FileInfo
 	for _, e := range entries {
 		for _, vm := range a.VersionManipulators() {
 			path = filepath.Join(a.Path(), e.Name())
-			if content, err = os.ReadFile(path); err != nil {
+			if fi, err = os.Stat(path); err != nil {
 				return
 			}
-			contentStr = string(content)
-			if vm.Detect(path, contentStr, &currentVersion) {
-				if contentStr, err = vm.Update(path, contentStr, &currentVersion, v); err != nil {
+			if !fi.IsDir() {
+				if content, err = os.ReadFile(path); err != nil {
 					return
 				}
-				if err = os.WriteFile(path, []byte(contentStr), 0755); err != nil {
-					return
+				contentStr = string(content)
+				if vm.Detect(path, contentStr, &currentVersion) {
+					if contentStr, err = vm.Update(path, contentStr, &currentVersion, v); err != nil {
+						return
+					}
+					if err = os.WriteFile(path, []byte(contentStr), 0755); err != nil {
+						return
+					}
 				}
 			}
 		}

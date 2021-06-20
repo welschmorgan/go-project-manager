@@ -28,13 +28,22 @@ type versionPartData struct {
 	separator string
 }
 
-var versionParts = map[VersionPart]versionPartData{
-	Major:        {Major, "major", "."},
-	Minor:        {Minor, "minor", "."},
-	Build:        {Build, "build", "."},
-	Revision:     {Revision, "revision", "."},
-	PreRelease:   {PreRelease, "preRelease", "-"},
-	BuildMetaTag: {BuildMetaTag, "buildMetaTag", "+"},
+var versionParts = []versionPartData{
+	{Major, "major", ""},
+	{Minor, "minor", "."},
+	{Build, "build", "."},
+	{Revision, "revision", "."},
+	{PreRelease, "preRelease", "-"},
+	{BuildMetaTag, "buildMetaTag", "+"},
+}
+
+func getData(vp VersionPart) *versionPartData {
+	for _, p := range versionParts {
+		if p.id == vp {
+			return &p
+		}
+	}
+	return nil
 }
 
 func (p VersionPart) String() string {
@@ -53,14 +62,22 @@ func (p VersionPart) Separator() string {
 	return versionParts[p].separator
 }
 
-var Zero = NewVersion(0, 0, 0)
-var FirstMajor = NewVersion(1, 0, 0)
-var FirstMinor = NewVersion(0, 1, 0)
-var FirstPatch = NewVersion(0, 0, 1)
-var FirstBuild = NewVersion(0, 0, 0, 1)
+var Zero = New(0, 0, 0)
+var FirstMajor = New(1, 0, 0)
+var FirstMinor = New(0, 1, 0)
+var FirstPatch = New(0, 0, 1)
+var FirstBuild = New(0, 0, 0, 1)
 
-func NewVersion(parts ...interface{}) Version {
-	v := Version(make([]string, len(parts)))
+func Clone(o Version) Version {
+	data := []string{}
+	for _, p := range o {
+		data = append(data, p)
+	}
+	return Version(data)
+}
+
+func New(parts ...interface{}) Version {
+	v := Version(make([]string, len(versionParts)))
 	for i, p := range parts {
 		v[i] = fmt.Sprint(p)
 	}
@@ -81,32 +98,9 @@ func Parse(s string) Version {
 	return v
 }
 
-func JoinStrings(parts ...string) string {
-	params := []interface{}{}
-	for _, p := range parts {
-		params = append(params, p)
-	}
-	return Join(params...)
-}
-
-func Join(parts ...interface{}) string {
-	v := ""
-	pval := ""
-	for i, p := range parts {
-		pval = fmt.Sprint(p)
-		if len(pval) > 0 {
-			if len(v) > 0 {
-				v += VersionPart(i).Separator()
-			}
-			v += pval
-		}
-	}
-	return v
-}
-
 func (v Version) IsEmpty(i VersionPart) bool {
-	if len(v) > int(i) {
-		return len(v[i]) != 0
+	if uint8(i) < uint8(len(v)) {
+		return len(v[i]) == 0
 	}
 	return true
 }
@@ -277,7 +271,16 @@ func (v Version) Decrement(i VersionPart, step int) error {
 }
 
 func (v Version) String() string {
-	return JoinStrings(v...)
+	ret := ""
+	for _, vp := range versionParts {
+		if !v.IsEmpty(vp.id) {
+			if len(ret) > 0 {
+				ret += vp.separator
+			}
+			ret += v[uint8(vp.id)]
+		}
+	}
+	return ret
 }
 
 func (v Version) Major() (val string, err error) {

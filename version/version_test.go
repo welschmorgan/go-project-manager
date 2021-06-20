@@ -25,7 +25,7 @@ func TestVersionParsingSemverBuildMetaTag(t *testing.T) {
 }
 
 func TestVersionIncrementPreRelease(t *testing.T) {
-	v := NewVersion(0, 0, 0, 1, "rc1")
+	v := New(0, 0, 0, 1, "rc1")
 	if err := v.Increment(PreRelease, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -34,14 +34,14 @@ func TestVersionIncrementPreRelease(t *testing.T) {
 }
 
 func TestVersionIncrementBuildMetaTag(t *testing.T) {
-	v := NewVersion(0, 0, 0, 1, 0, "", "234234sdf")
+	v := New(0, 0, 0, 1, 0, "", "234234sdf")
 	if err := v.Increment(BuildMetaTag, 1); err == nil {
 		t.Fatalf("PreRelease part of version should not be incrementable")
 	}
 }
 
 func TestVersionIncrementRevision(t *testing.T) {
-	v := NewVersion(0, 0, 0, 1)
+	v := New(0, 0, 0, 1)
 	if err := v.Increment(Revision, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -50,7 +50,7 @@ func TestVersionIncrementRevision(t *testing.T) {
 }
 
 func TestVersionIncrementBuild(t *testing.T) {
-	v := NewVersion(0, 0, 1, 1)
+	v := New(0, 0, 1, 1)
 	if err := v.Increment(Build, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -59,7 +59,7 @@ func TestVersionIncrementBuild(t *testing.T) {
 }
 
 func TestVersionIncrementMinor(t *testing.T) {
-	v := NewVersion(0, 1, 1, 1)
+	v := New(0, 1, 1, 1)
 	if err := v.Increment(Minor, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -68,7 +68,7 @@ func TestVersionIncrementMinor(t *testing.T) {
 }
 
 func TestVersionIncrementMajor(t *testing.T) {
-	v := NewVersion(1, 1, 1, 1)
+	v := New(1, 1, 1, 1)
 	if err := v.Increment(Major, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -77,7 +77,7 @@ func TestVersionIncrementMajor(t *testing.T) {
 }
 
 func TestVersionIncrementSuffix(t *testing.T) {
-	v := NewVersion(1, 0, 0, 0, "rc0")
+	v := New(1, 0, 0, 0, "rc0")
 	if err := v.Increment(4, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -86,7 +86,7 @@ func TestVersionIncrementSuffix(t *testing.T) {
 }
 
 func TestVersionDecrementRevision(t *testing.T) {
-	v := NewVersion(0, 0, 0, 2)
+	v := New(0, 0, 0, 2)
 	if err := v.Decrement(3, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -95,7 +95,7 @@ func TestVersionDecrementRevision(t *testing.T) {
 }
 
 func TestVersionDecrementBuild(t *testing.T) {
-	v := NewVersion(0, 0, 2, 1)
+	v := New(0, 0, 2, 1)
 	if err := v.Decrement(2, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -104,7 +104,7 @@ func TestVersionDecrementBuild(t *testing.T) {
 }
 
 func TestVersionDecrementMinor(t *testing.T) {
-	v := NewVersion(0, 2, 1, 1)
+	v := New(0, 2, 1, 1)
 	if err := v.Decrement(1, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -113,7 +113,7 @@ func TestVersionDecrementMinor(t *testing.T) {
 }
 
 func TestVersionDecrementMajor(t *testing.T) {
-	v := NewVersion(2, 1, 1, 1)
+	v := New(2, 1, 1, 1)
 	if err := v.Decrement(0, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -122,7 +122,7 @@ func TestVersionDecrementMajor(t *testing.T) {
 }
 
 func TestVersionDecrementSuffix(t *testing.T) {
-	v := NewVersion(1, 0, 0, 0, "rc1")
+	v := New(1, 0, 0, 0, "rc1")
 	if err := v.Decrement(4, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -131,7 +131,7 @@ func TestVersionDecrementSuffix(t *testing.T) {
 }
 
 func TestVersionDecrementPreRelease(t *testing.T) {
-	v := NewVersion(0, 0, 0, 1, "rc2")
+	v := New(0, 0, 0, 1, "rc2")
 	if err := v.Decrement(PreRelease, 1); err != nil {
 		t.Error(err)
 	} else {
@@ -140,7 +140,7 @@ func TestVersionDecrementPreRelease(t *testing.T) {
 }
 
 func TestVersionDecrementBuildMetaTag(t *testing.T) {
-	v := NewVersion(0, 0, 0, 1, 0, "", "234234sdf")
+	v := New(0, 0, 0, 1, 0, "", "234234sdf")
 	if err := v.Decrement(BuildMetaTag, 1); err == nil {
 		t.Fatalf("PreRelease part of version should not be decrementable")
 	}
