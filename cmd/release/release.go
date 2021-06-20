@@ -258,6 +258,7 @@ func (r *Release) CheckoutBranch(branch string) error {
 }
 
 func (r *Release) PullBranch() error {
+	r.Vc.CurrentBranch()
 	if err := r.Vc.Pull(vcs.PullOptions{All: false, ListTags: false, Force: false}); err != nil {
 		return err
 	}

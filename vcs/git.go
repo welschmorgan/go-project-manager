@@ -82,7 +82,7 @@ func (g *Git) Open(p string) error {
 					"fake-for-dry-run": "http://fake.com",
 				}
 			} else {
-				fmt.Fprintf(os.Stderr, "%s[\033[1;31m-\033[0m] no remotes configured for '%s'\n", strings.Repeat("\t", config.Get().Indent), filepath.Base(g.path))
+				log.Warnf("no remotes configured for '%s'\n", g.path)
 			}
 		}
 		g.url = ""
@@ -591,7 +591,7 @@ func (g *Git) Stage(options VersionControlOptions) error {
 
 // Retrieve commits without parents
 func (g *Git) RootCommits() ([]string, error) {
-	log.Trace("[VCS_TRACE] RootCommits - %s", g.path)
+	log.Tracef("[VCS_TRACE] RootCommits - %s", g.path)
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	args := []string{
@@ -604,7 +604,7 @@ func (g *Git) RootCommits() ([]string, error) {
 
 // Retrieve commits without parents
 func (g *Git) CurrentCommit(options VersionControlOptions) (hash, subject string, err error) {
-	log.Trace("[VCS_TRACE] CurrentCommit - %s", g.path)
+	log.Tracef("[VCS_TRACE] CurrentCommit - %s", g.path)
 
 	// parse options
 	var opts CurrentCommitOptions
@@ -684,14 +684,14 @@ func (g *Git) ExtractLog(options VersionControlOptions) (lines []string, err err
 	// format as short or long
 	opts.Branch = strings.TrimSpace(opts.Branch)
 	if len(opts.Branch) > 0 {
-		args = append(args, fmt.Sprintf("--format='%s'", opts.Format))
+		args = append(args, opts.Branch)
 	}
 	if opts.Limit >= 0 {
 		args = append(args, "-n", fmt.Sprint(opts.Limit))
 	}
 	opts.Format = strings.TrimSpace(opts.Format)
 	if len(opts.Format) >= 0 {
-		args = append(args, fmt.Sprintf("--format='%s'", opts.Format))
+		args = append(args, fmt.Sprintf("--format=%s", opts.Format))
 	}
 
 	// run command
@@ -702,6 +702,33 @@ func (g *Git) ExtractLog(options VersionControlOptions) (lines []string, err err
 	}
 
 	// retrieve non-empty lines
+	for _, stdoutLine := range stdout {
+		stdoutLine = strings.TrimSpace(stdoutLine)
+		if len(stdoutLine) != 0 {
+			lines = append(lines, stdoutLine)
+		}
+	}
+	return
+}
+
+// List already created stashes
+func (g *Git) ListStashes() (lines []string, err error) {
+	log.Trace("[VCS_TRACE] ListStashes")
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	args := []string{
+		"stash", "list",
+	}
+
+	// run command
+	code, stdout, stderr, err := exec.RunCommand("git", args...)
+	exec.DumpCommandErrors(code, stderr)
+	if err != nil {
+		return nil, err
+	}
+
+	// retrieve non-empty lines
+	lines = []string{}
 	for _, stdoutLine := range stdout {
 		stdoutLine = strings.TrimSpace(stdoutLine)
 		if len(stdoutLine) != 0 {

@@ -75,3 +75,9 @@ func (s *Svn) ExtractLog(options VersionControlOptions) (lines []string, err err
 	err = errNotYetImpl
 	return
 }
+
+// List already created stashes
+func (s *Svn) ListStashes() (lines []string, err error) {
+	err = errNotYetImpl
+	return
+}

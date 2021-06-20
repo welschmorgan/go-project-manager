@@ -75,3 +75,9 @@ func (h *Hg) ExtractLog(options VersionControlOptions) (lines []string, err erro
 	err = errNotYetImpl
 	return
 }
+
+// List already created stashes
+func (h *Hg) ListStashes() (lines []string, err error) {
+	err = errNotYetImpl
+	return
+}

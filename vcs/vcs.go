@@ -77,6 +77,9 @@ type VersionControlSoftware interface {
 	// Create a new stash from the working tree
 	Stash(options VersionControlOptions) ([]string, error)
 
+	// List already created stashes
+	ListStashes() ([]string, error)
+
 	// Delete repository branch
 	DeleteBranch(name string, options VersionControlOptions) error
 

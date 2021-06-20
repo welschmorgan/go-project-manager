@@ -121,6 +121,49 @@ func (m *POMDependencies) UnmarshalXML(d *xml.Decoder, start xml.StartElement) e
 	return nil
 }
 
+type POMModelVersionXmlEntry struct {
+	XMLName xml.Name
+	Value   string `xml:",chardata"`
+}
+
+// MarshalXML marshals the map to XML, with each key in the map being a
+// tag and it's corresponding value being it's contents.
+func (m POMModelVersion) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	err := e.EncodeToken(start)
+	if err != nil {
+		return err
+	}
+
+	e.Encode(POMModelVersionXmlEntry{XMLName: xml.Name{Local: "modelVersion"}, Value: m.Version()})
+
+	return e.EncodeToken(start.End())
+}
+
+// UnmarshalXML unmarshals the XML into a map of string to strings,
+// creating a key in the map for each tag and setting it's value to the
+// tags contents.
+//
+// The fact this function is on the pointer of Map is important, so that
+// if m is nil it can be initialized, which is often the case if m is
+// nested in another xml structurel. This is also why the first thing done
+// on the first line is initialize it.
+func (m *POMModelVersion) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	*m = POMModel1
+	for {
+		var e POMModelVersionXmlEntry
+
+		err := d.Decode(&e)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		(*m) = ParseModelVersion(e.Value)
+	}
+	return nil
+}
+
 type POMProject struct {
 	XMLName xml.Name `xml:"project"`
 
@@ -160,6 +203,15 @@ const (
 func ParseModelVersion(s string) POMModelVersion {
 	if s == POMModel1.Version() || s == fmt.Sprint(POMModel1.MajorVersion()) {
 		return POMModel1
+	}
+	if s == POMModel2.Version() || s == fmt.Sprint(POMModel2.MajorVersion()) {
+		return POMModel2
+	}
+	if s == POMModel3.Version() || s == fmt.Sprint(POMModel3.MajorVersion()) {
+		return POMModel3
+	}
+	if s == POMModel4.Version() || s == fmt.Sprint(POMModel4.MajorVersion()) {
+		return POMModel4
 	}
 	return POMModelUnknown
 }

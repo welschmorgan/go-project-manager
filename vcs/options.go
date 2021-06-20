@@ -120,6 +120,11 @@ type CurrentCommitOptions struct {
 	ShortHash bool
 }
 
+type Sorter struct {
+	Column     string
+	Descending bool
+}
+
 type ExtractLogOptions struct {
 	Limit  int
 	Format string
