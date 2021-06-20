@@ -25,6 +25,7 @@ var undoActionParams = map[string][]string{
 	"merge":         {"hashBeforeMerge", "hashAfterMerge", "source", "target"},
 	"create_tag":    {"name"},
 	"bump_version":  {"oldVersion", "newVersion"},
+	"commit":        {"branch", "prevHead", "nextHead", "subject"},
 	"pull_branch":   {"branch", "prevHead", "nextHead"},
 }
 
@@ -47,6 +48,10 @@ var undoActionParamHandlers = map[string]func(*UndoAction) error{
 	},
 	"merge": func(u *UndoAction) error {
 		u.Title = fmt.Sprintf("Merge branch %s -> %s", u.Params["source"], u.Params["target"])
+		return nil
+	},
+	"commit": func(u *UndoAction) error {
+		u.Title = fmt.Sprintf("Commit staged files on %s (%s-> %s) - %s", u.Params["branch"], u.Params["prevHead"], u.Params["nextHead"], u.Params["subject"])
 		return nil
 	},
 	"create_tag": func(u *UndoAction) error {
@@ -102,6 +107,8 @@ func (u *UndoAction) Run() error {
 		return u.undoMerge()
 	case "create_tag":
 		return u.undoTag()
+	case "commit":
+		return u.undoCommit()
 	case "bump_version":
 		return u.undoBumpVersion()
 	default:
@@ -187,6 +194,15 @@ func (u *UndoAction) undoTag() error {
 	return u.VC.Tag(name, vcs.TagOptions{
 		Delete: true,
 	})
+}
+
+func (u *UndoAction) undoCommit() error {
+	branch := u.Params["branch"].(string)
+	subject := u.Params["subject"].(string)
+	prevHead := u.Params["prevHead"].(string)
+	nextHead := u.Params["nextHead"].(string)
+	log.Debugf("Delete commit on %s %s: %s", branch, nextHead, subject)
+	return u.VC.Reset(vcs.ResetOptions{Hard: true, Commit: prevHead})
 }
 
 func (u *UndoAction) undoBumpVersion() error {

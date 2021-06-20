@@ -211,9 +211,12 @@ func (v Version) Increment(i VersionPart, step int) error {
 			if err = v.SetString(i, fmt.Sprintf("%s%d", prefix, int(ival)+step)); err != nil {
 				return err
 			}
+			// set next parts to 0
 			for j := uint8(i + 1); j < uint8(len(v)); j++ {
-				if err = v.SetInt(VersionPart(j), 0); err != nil {
-					return err
+				if !v.IsEmpty(VersionPart(j)) {
+					if err = v.SetInt(VersionPart(j), 0); err != nil {
+						return err
+					}
 				}
 			}
 			return nil
@@ -221,9 +224,12 @@ func (v Version) Increment(i VersionPart, step int) error {
 			if err = v.SetInt(i, int(ival)+step); err != nil {
 				return err
 			}
+			// set next parts to 0
 			for j := uint8(i + 1); j < uint8(len(v)); j++ {
-				if err = v.SetInt(VersionPart(j), 0); err != nil {
-					return err
+				if !v.IsEmpty(VersionPart(j)) {
+					if err = v.SetInt(VersionPart(j), 0); err != nil {
+						return err
+					}
 				}
 			}
 			return nil

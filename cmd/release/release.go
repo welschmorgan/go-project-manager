@@ -154,7 +154,7 @@ func (r *Release) Do() error {
 		return err
 	}
 
-	if err = r.BumpVersion(); err != nil {
+	if err = r.PrepareForNextSprint(); err != nil {
 		return err
 	}
 
@@ -402,8 +402,13 @@ func (r *Release) ReleaseFinish() error {
 	return nil
 }
 
-func (r *Release) BumpVersion() (err error) {
-	r.Step("Bump version: %s -> %s", r.Context.version, r.Context.nextVersion)
+func (r *Release) PrepareForNextSprint() (err error) {
+	r.Step("Prepare for next sprint: %s", r.Context.nextVersion.String())
+	r.SubStep("Checkout %s", r.Context.devBranch)
+	if err = r.CheckoutBranch(r.Context.devBranch); err != nil {
+		return
+	}
+	r.SubStep("Bump version: %s -> %s", r.Context.version, r.Context.nextVersion)
 	if err = r.Context.accessor.WriteVersion(&r.Context.nextVersion); err != nil {
 		return
 	}
@@ -411,5 +416,32 @@ func (r *Release) BumpVersion() (err error) {
 		"oldVersion": r.Context.version,
 		"newVersion": r.Context.nextVersion,
 	})
+	r.SubStep("Stage & Commit")
+	if err = r.Vc.Stage(vcs.StageOptions{All: true}); err != nil {
+		return
+	}
+	branch := ""
+	prevHead := ""
+	nextHead := ""
+	if branch, err = r.Vc.CurrentBranch(); err != nil {
+		return
+	}
+	if prevHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return
+	}
+	subject := "Prepare for next sprint: " + r.Context.nextVersion.String()
+	if err = r.Vc.Commit(vcs.CommitOptions{Message: subject, AllowEmpty: true}); err != nil {
+		return
+	}
+	if nextHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+		return
+	}
+	r.PushUndoAction("commit", r.Project.Path, r.Vc.Name(), map[string]interface{}{
+		"branch":   branch,
+		"subject":  subject,
+		"prevHead": prevHead,
+		"nextHead": nextHead,
+	})
+
 	return nil
 }

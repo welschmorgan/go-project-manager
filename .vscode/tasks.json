@@ -46,7 +46,7 @@
     {
       "label": "release",
       "type": "shell",
-      "command": "make re && ./grlm release -C /tmp/test-wksp -v=high",
+      "command": "make re && ./grlm release -C /tmp/test-wksp -v=max",
       "options": {
         "cwd": "${workspaceFolder}"
       },

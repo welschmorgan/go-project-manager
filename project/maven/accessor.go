@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/project/accessor"
@@ -15,7 +16,7 @@ type ProjectAccessor struct {
 	accessor.ProjectAccessor
 	path    string
 	pomFile string
-	pom     *POMFile
+	pom     *POMProject
 }
 
 func (a *ProjectAccessor) AccessorName() string {
@@ -31,9 +32,9 @@ func (a *ProjectAccessor) DescriptionFile() string {
 }
 
 func (a *ProjectAccessor) Scaffold(ctx *accessor.FinalizationContext) error {
-	a.path = ctx.Project.Path
-	a.pom = NewPOMFile()
-	a.pomFile = filepath.Join(ctx.Project.Path, a.DescriptionFile())
+	if err := a.Open(ctx.Project.Path); err != nil {
+		return err
+	}
 	return a.Scaffolder().Scaffold(ctx)
 }
 
@@ -43,7 +44,7 @@ func (a *ProjectAccessor) Scaffolder() accessor.Scaffolder {
 
 func (a *ProjectAccessor) Open(p string) error {
 	a.path = p
-	a.pom = NewPOMFile()
+	a.pom = NewPOMProject()
 	a.pomFile = filepath.Join(p, a.DescriptionFile())
 	return a.pom.ReadFile(a.pomFile)
 }
@@ -57,11 +58,11 @@ func (a *ProjectAccessor) Detect(p string) (bool, error) {
 }
 
 func (a *ProjectAccessor) Name() (string, error) {
-	return a.pom.Root.ArtifactId, nil
+	return a.pom.ArtifactId, nil
 }
 
 func (a *ProjectAccessor) ReadVersion() (v version.Version, err error) {
-	vs := a.pom.Root.Version
+	vs := a.pom.Version
 	vs = strings.Replace(vs, "-SNAPSHOT", "", 1)
 	if v = version.Parse(vs); v == nil {
 		return nil, fmt.Errorf("failed to parse version from '%s'", vs)
@@ -108,11 +109,15 @@ func (a *ProjectAccessor) WriteVersion(v *version.Version) (err error) {
 }
 
 func (a *ProjectAccessor) detectPOMVersion(file, content string, currentVersion *version.Version) bool {
-	return strings.Contains(content, fmt.Sprintf("<version>%s</version>", currentVersion))
+	needle := fmt.Sprintf(`<version>\s*%s\s*(-SNAPSHOT|)</version>`, currentVersion)
+	re := regexp.MustCompile(needle)
+	return re.MatchString(content)
 }
 
 func (a *ProjectAccessor) updatePOMVersion(file, content string, currentVersion, nextVersion *version.Version) (string, error) {
-	return strings.ReplaceAll(content, fmt.Sprintf("<version>%s</version>", currentVersion), fmt.Sprintf("<version>%s</version>", nextVersion)), nil
+	needle := fmt.Sprintf(`<version>\s*%s(-SNAPSHOT|)\s*</version>`, currentVersion)
+	re := regexp.MustCompile(needle)
+	return re.ReplaceAllString(content, fmt.Sprintf("<version>%s$1</version>", nextVersion)), nil
 }
 
 func (a *ProjectAccessor) detectSonarVersion(file, content string, currentVersion *version.Version) bool {

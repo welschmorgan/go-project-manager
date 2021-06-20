@@ -70,98 +70,34 @@ type POMDependency struct {
 	Scope      string   `xml:"scope"`
 }
 
-type POMDependencies map[string]POMDependency
-
-type POMDependenciesXmlEntry struct {
-	XMLName xml.Name
-	Value   POMDependency `xml:"dependency"`
+type POMDependencyList struct {
+	XMLName      xml.Name        `xml:"dependencies"`
+	Dependencies []POMDependency `xml:"dependency"`
 }
 
-// MarshalXML marshals the map to XML, with each key in the map being a
-// tag and it's corresponding value being it's contents.
-func (m POMDependencies) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	if len(m) == 0 {
-		return nil
-	}
+type POMPlugin struct {
+	XMLName xml.Name `xml:"plugin"`
 
-	err := e.EncodeToken(start)
-	if err != nil {
-		return err
-	}
-
-	for k, v := range m {
-		e.Encode(POMDependenciesXmlEntry{XMLName: xml.Name{Local: k}, Value: v})
-	}
-
-	return e.EncodeToken(start.End())
+	ArtifactId string `xml:"artifactId"`
+	Version    string `xml:"version"`
 }
 
-// UnmarshalXML unmarshals the XML into a map of string to strings,
-// creating a key in the map for each tag and setting it's value to the
-// tags contents.
-//
-// The fact this function is on the pointer of Map is important, so that
-// if m is nil it can be initialized, which is often the case if m is
-// nested in another xml structurel. This is also why the first thing done
-// on the first line is initialize it.
-func (m *POMDependencies) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	*m = POMDependencies{}
-	for {
-		var e POMDependenciesXmlEntry
+type POMPluginList struct {
+	XMLName xml.Name `xml:"plugins"`
 
-		err := d.Decode(&e)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-
-		(*m)[e.XMLName.Local] = e.Value
-	}
-	return nil
+	Plugins []POMPlugin `xml:"plugin"`
 }
 
-type POMModelVersionXmlEntry struct {
-	XMLName xml.Name
-	Value   string `xml:",chardata"`
+type POMPluginManagement struct {
+	XMLName xml.Name `xml:"pluginManagement"`
+
+	Plugins POMPluginList `xml:"plugins"`
 }
 
-// MarshalXML marshals the map to XML, with each key in the map being a
-// tag and it's corresponding value being it's contents.
-func (m POMModelVersion) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	err := e.EncodeToken(start)
-	if err != nil {
-		return err
-	}
+type POMBuild struct {
+	XMLName xml.Name `xml:"build"`
 
-	e.Encode(POMModelVersionXmlEntry{XMLName: xml.Name{Local: "modelVersion"}, Value: m.Version()})
-
-	return e.EncodeToken(start.End())
-}
-
-// UnmarshalXML unmarshals the XML into a map of string to strings,
-// creating a key in the map for each tag and setting it's value to the
-// tags contents.
-//
-// The fact this function is on the pointer of Map is important, so that
-// if m is nil it can be initialized, which is often the case if m is
-// nested in another xml structurel. This is also why the first thing done
-// on the first line is initialize it.
-func (m *POMModelVersion) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	*m = POMModel1
-	for {
-		var e POMModelVersionXmlEntry
-
-		err := d.Decode(&e)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-
-		(*m) = ParseModelVersion(e.Value)
-	}
-	return nil
+	PluginManagement POMPluginManagement `xml:"pluginManagement"`
 }
 
 type POMProject struct {
@@ -171,12 +107,13 @@ type POMProject struct {
 	XmlnsXsi          string `xml:"xmlns:xsi,attr"`
 	XsiSchemaLocation string `xml:"xsi:schemaLocation,attr"`
 
-	ModelVersion POMModelVersion `xml:"modelVersion"`
-	GroupId      string          `xml:"groupId"`
-	ArtifactId   string          `xml:"artifactId"`
-	Version      string          `xml:"version"`
-	Properties   POMProperties   `xml:"properties"`
-	Dependencies POMDependencies `xml:"dependencies"`
+	ModelVersion POMModelVersion   `xml:"modelVersion"`
+	GroupId      string            `xml:"groupId"`
+	ArtifactId   string            `xml:"artifactId"`
+	Version      string            `xml:"version"`
+	Properties   POMProperties     `xml:"properties"`
+	Dependencies POMDependencyList `xml:"dependencies"`
+	Build        POMBuild          `xml:"build"`
 }
 
 func (p *POMProject) SetModelVersion(v POMModelVersion) {
@@ -184,10 +121,6 @@ func (p *POMProject) SetModelVersion(v POMModelVersion) {
 	p.Xmlns = "http://maven.apache.org/POM/" + v.Version()
 	p.XmlnsXsi = "http://www.w3.org/2001/XMLSchema-instance"
 	p.XsiSchemaLocation = "http://maven.apache.org/POM/" + v.Version() + " http://maven.apache.org/xsd/maven-" + v.Version() + ".xsd"
-}
-
-type POMFile struct {
-	Root *POMProject `xml:"project"`
 }
 
 type POMModelVersion uint8
@@ -240,39 +173,80 @@ func (v POMModelVersion) String() string {
 	return v.Version()
 }
 
-func NewPOMFileWithValues(modelVersion POMModelVersion, groupId, artifactId, version string) *POMFile {
-	pf := &POMFile{
-		Root: &POMProject{
-			GroupId:    groupId,
-			ArtifactId: artifactId,
-			Version:    version,
-			Properties: POMProperties{
-				"maven.compiler.source": DefaultPOMJavaVersion,
-				"maven.compiler.target": DefaultPOMJavaVersion,
-			},
+type POMModelVersionXmlEntry struct {
+	XMLName xml.Name
+	Value   string `xml:",chardata"`
+}
+
+// MarshalXML marshals the map to XML, with each key in the map being a
+// tag and it's corresponding value being it's contents.
+func (m POMModelVersion) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	err := e.EncodeToken(start)
+	if err != nil {
+		return err
+	}
+
+	e.Encode(POMModelVersionXmlEntry{XMLName: xml.Name{Local: "modelVersion"}, Value: m.String()})
+
+	return e.EncodeToken(start.End())
+}
+
+// UnmarshalXML unmarshals the XML into a map of string to strings,
+// creating a key in the map for each tag and setting it's value to the
+// tags contents.
+//
+// The fact this function is on the pointer of Map is important, so that
+// if m is nil it can be initialized, which is often the case if m is
+// nested in another xml structurel. This is also why the first thing done
+// on the first line is initialize it.
+func (m *POMModelVersion) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	*m = POMModel1
+	for {
+		var e POMModelVersionXmlEntry
+
+		err := d.Decode(&e)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		*m = ParseModelVersion(e.Value)
+	}
+	return nil
+}
+
+func NewPOMProjectWithValues(modelVersion POMModelVersion, groupId, artifactId, version string) *POMProject {
+	pf := &POMProject{
+		GroupId:    groupId,
+		ArtifactId: artifactId,
+		Version:    version,
+		Properties: POMProperties{
+			"maven.compiler.source": DefaultPOMJavaVersion,
+			"maven.compiler.target": DefaultPOMJavaVersion,
 		},
 	}
-	pf.Root.SetModelVersion(modelVersion)
+	pf.SetModelVersion(modelVersion)
 	return pf
 }
 
-func NewPOMFile() *POMFile {
-	return NewPOMFileWithValues(DefaultPOMModel, "", "", DefaultPOMVersion)
+func NewPOMProject() *POMProject {
+	return NewPOMProjectWithValues(DefaultPOMModel, "", "", DefaultPOMVersion)
 }
 
-func (p *POMFile) Write() ([]byte, error) {
-	if data, err := xml.MarshalIndent(*p.Root, "", "  "); err != nil {
+func (p *POMProject) Write() ([]byte, error) {
+	if data, err := xml.MarshalIndent(*p, "", "  "); err != nil {
 		return nil, err
 	} else {
 		return data, nil
 	}
 }
 
-func (p *POMFile) Read(b []byte) error {
-	return xml.Unmarshal(b, &p)
+func (p *POMProject) Read(b []byte) error {
+	return xml.Unmarshal(b, p)
 }
 
-func (p *POMFile) WriteFile(fname string) error {
+func (p *POMProject) WriteFile(fname string) error {
 	if xml, err := p.Write(); err != nil {
 		return err
 	} else {
@@ -280,12 +254,14 @@ func (p *POMFile) WriteFile(fname string) error {
 	}
 }
 
-func (p *POMFile) ReadFile(fname string) error {
+func (p *POMProject) ReadFile(fname string) error {
 	if _, err := os.Stat(fname); err == nil || os.IsExist(err) {
 		if content, err := os.ReadFile(fname); err != nil {
 			return err
-		} else if err := p.Read(content); err != nil {
-			return err
+		} else {
+			if err := p.Read(content); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

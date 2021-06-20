@@ -50,7 +50,7 @@ func (s *MavenScaffolder) Scaffold(ctx *accessor.FinalizationContext) error {
 			// if ans, err = ui.Ask("\tModelVersion", DefaultPOMModel); err != nil {
 			// 	return err
 			// } else {
-			// 	a.pom.Root.SetModelVersion(ParseModelVersion(ans))
+			// 	a.pom.SetModelVersion(ParseModelVersion(ans))
 			// }
 			if ans, err = ui.Ask("\tArtifactId", ctx.Project.Name); err != nil {
 				return err

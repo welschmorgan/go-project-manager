@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestPOMFile(t *testing.T) {
-	pf := NewPOMFileWithValues(POMModel4, "com.test.app", "MyApp", "1.0.0")
+func TestPOMProject(t *testing.T) {
+	pf := NewPOMProjectWithValues(POMModel4, "com.test.app", "MyApp", "1.0.0")
 	if xml, err := pf.Write(); err != nil {
 		t.Fatalf("failed to write POM's XML, %s", err.Error())
 	} else {
