@@ -68,7 +68,7 @@ func (r *Release) AcquireVersion() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if curVersion, err = accessor.CurrentVersion(); err != nil {
+		if curVersion, err = accessor.Version(); err != nil {
 			return "", err
 		}
 	default:

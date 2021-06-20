@@ -1,112 +1,18 @@
 package vcs
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
 	"reflect"
-	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 )
 
 var (
 	errNotYetImpl = errors.New("not yet implemented")
+	TRACE         = true
 )
-
-type VersionControlOptions interface{}
-
-func getOptions(options, defaults VersionControlOptions) (VersionControlOptions, error) {
-	if options == nil {
-		return defaults, nil
-	}
-	optType := reflect.TypeOf(options)
-	defType := reflect.TypeOf(defaults)
-	if defType.Name() != optType.Name() {
-		return nil, fmt.Errorf("options are of wrong type, expected %s but got %s", defType.Name(), optType.Name())
-	}
-	return options, nil
-}
-
-type CloneOptions struct {
-	Branch   string
-	Insecure bool
-}
-type CheckoutOptions struct {
-	VersionControlOptions
-	CreateBranch     bool
-	UpdateIfExisting bool
-	StartingPoint    string
-}
-
-type PullOptions struct {
-	VersionControlOptions
-	Force    bool
-	All      bool
-	ListTags bool
-}
-
-type PushOptions struct {
-	VersionControlOptions
-	Force bool
-	All   bool
-}
-
-type MergeOptions struct {
-	VersionControlOptions
-	NoFastForward   bool
-	FastForwardOnly bool
-}
-
-type StatusOptions struct {
-	VersionControlOptions
-	Short bool
-}
-
-type StashOptions struct {
-	VersionControlOptions
-	Save             bool
-	List             bool
-	Apply            bool
-	Pop              bool
-	IncludeUntracked bool
-	Message          string
-}
-
-type BranchOptions struct {
-	VersionControlOptions
-	All           bool
-	Verbose       bool
-	SetUpstreamTo string
-}
-
-type ListTagsOptions struct {
-	VersionControlOptions
-	SortByTaggerDate    bool
-	SortByCommitterDate bool
-}
-
-type TagOptions struct {
-	VersionControlOptions
-	Delete    bool
-	Annotated bool
-	Message   string
-	Commit    string
-}
-
-type ResetOptions struct {
-	VersionControlOptions
-	Hard   bool
-	Commit string
-}
-type DeleteBranchOptions struct {
-	VersionControlOptions
-	Local      bool
-	Remote     bool
-	RemoteName string
-}
 
 type VersionControlSoftware interface {
 	// Retrieve the name of this vcs
@@ -119,13 +25,25 @@ type VersionControlSoftware interface {
 	Url() string
 
 	// Detect if a given path can be handled by this VCS
-	Detect(path string) (bool, error)
+	Detect(path string) error
 
 	// Open a local repository, loading infos
 	Open(path string) error
 
+	// Initialize a new repository
+	Initialize(path string, options VersionControlOptions) error
+
 	// Clone a remote repository
 	Clone(url, path string, options VersionControlOptions) error
+
+	// Add files to index
+	Stage(options VersionControlOptions) error
+
+	// Retrieve commits without parents
+	GetRootCommits() ([]string, error)
+
+	// Create a new commit
+	Commit(options VersionControlOptions) error
 
 	// Get the working tree status (dirty / clean)
 	Status(options VersionControlOptions) ([]string, error)
@@ -170,84 +88,18 @@ type VersionControlSoftware interface {
 	ListTags(options VersionControlOptions) ([]string, error)
 }
 
-// Run a command using os.exec. It returns the split stdout, potentially an error, and split stderr
-func runCommand(name string, args ...string) (exitCode int, stdout []string, stderr []string, error error) {
-	var bufStdout bytes.Buffer
-	var bufStderr bytes.Buffer
-	if config.Get().Verbose || config.Get().DryRun {
-		argStr := ""
-		for _, a := range args {
-			if len(argStr) > 0 {
-				argStr += ", "
-			}
-			argStr += fmt.Sprintf("%q", a)
-		}
-		fmt.Printf("%s* exec: %q %s\n", strings.Repeat("\t", config.Get().Indent), name, argStr)
-	}
-	ret := []string{}
-	var errs []string
-	if !config.Get().DryRun {
-		cmd := exec.Command(name, args...)
-		cmd.Stderr = &bufStderr
-		cmd.Stdout = &bufStdout
-		if err := cmd.Run(); err != nil {
-			return cmd.ProcessState.ExitCode(), nil, strings.Split(bufStderr.String(), "\n"), err
-		}
-		exitCode = cmd.ProcessState.ExitCode()
-		lines := map[string]bool{}
-		for line, err := bufStdout.ReadString('\n'); err == nil; line, err = bufStdout.ReadString('\n') {
-			line = strings.TrimSpace(line)
-			if ok := lines[line]; !ok {
-				lines[line] = true
-				ret = append(ret, line)
-			}
-		}
-		if len(strings.TrimSpace(bufStderr.String())) > 0 {
-			errs = strings.Split(strings.TrimSpace(bufStderr.String()), "\n")
-		}
-	}
-	return exitCode, ret, errs, nil
-}
-
-func dumpCommandErrors(exitCode int, errs []string) {
-	level := ""
-	color := ""
-	indent := strings.Repeat("\t", config.Get().Indent)
-	if exitCode != 0 {
-		level = "error"
-		color = "\033[1;31m"
-	} else {
-		level = "warning"
-		color = "\033[1;33m"
-	}
-	shouldPrint := level == "error" || config.Get().Verbose
-	if !shouldPrint {
-		return
-	}
-	if len(errs) > 0 {
-		if len(errs) == 1 {
-			fmt.Fprintf(os.Stderr, "%s%s%s%s: %v\n", indent, color, level, "\033[0m", errs[0])
-		} else {
-			errStr := ""
-			numErrs := 0
-			for _, err := range errs {
-				if len(strings.TrimSpace(err)) > 0 {
-					if len(errStr) > 0 {
-						errStr += "\n"
-					}
-					errStr += fmt.Sprintf("%s\t- %s", indent, strings.TrimSpace(err))
-					numErrs += 1
-				}
-			}
-			fmt.Fprintf(os.Stderr, "%s%s%d %s(s)%s:\n%s\n", indent, color, len(errs), level, "\033[0m", errStr)
-		}
-	}
-}
-
 var All = []VersionControlSoftware{
 	&Git{},
 	&Svn{},
 	&Hg{},
+}
+
+var AllNames = []string{}
+
+func init() {
+	for _, v := range All {
+		AllNames = append(AllNames, v.Name())
+	}
 }
 
 func instanciate(a VersionControlSoftware) VersionControlSoftware {
@@ -266,15 +118,13 @@ func Get(n string) VersionControlSoftware {
 
 func Detect(path string) (VersionControlSoftware, error) {
 	for _, s := range All {
-		ok, err := s.Detect(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %s: %s", path, err.Error())
-		}
-		if ok {
+		if err := s.Detect(path); err != nil && err != errNotYetImpl {
+			log.Errorf("error: %s: %s: %s\n", path, s.Name(), err.Error())
+		} else {
 			return instanciate(s), nil
 		}
 	}
-	return nil, fmt.Errorf("unknown vcs for folder '%s'", path)
+	return nil, fmt.Errorf("cannot find suitable vcs, tried %v", AllNames)
 }
 
 func Open(path string) (VersionControlSoftware, error) {
@@ -286,4 +136,9 @@ func Open(path string) (VersionControlSoftware, error) {
 		}
 		return vc, nil
 	}
+}
+
+func Initialize(n, p string, options VersionControlOptions) (VersionControlSoftware, error) {
+	v := Get(n)
+	return v, v.Initialize(p, options)
 }

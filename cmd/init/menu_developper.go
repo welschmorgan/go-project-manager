@@ -35,7 +35,13 @@ func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 			ui.ActionEdit.Id:   "Edit existing developper",
 			ui.ActionRemove.Id: "Remove existing developper",
 			ui.ActionClear.Id:  "Clear developpers",
-		}); err != nil {
+		},
+		map[string]ui.ItemFieldType{
+			"Name":  ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Email": ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Phone": ui.NewItemFieldType(ui.ItemFieldText, ""),
+		},
+		nil, true); err != nil {
 		return nil, err
 	} else {
 		return &DevelopperMenu{
@@ -43,6 +49,7 @@ func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 		}, nil
 	}
 }
+
 func (m *DevelopperMenu) Discover() error {
 	for _, project := range m.Workspace.Projects {
 		s := vcs.Get(project.SourceControl)
@@ -63,5 +70,5 @@ func (m *DevelopperMenu) Discover() error {
 			}
 		}
 	}
-	return nil
+	return m.CRUDMenu.Discover()
 }

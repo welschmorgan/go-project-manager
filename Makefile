@@ -1,14 +1,14 @@
 TARGET=grlm
 
 ${TARGET}: main.go
-	go build -o $@ $^
+	go build -a -o $@ $^
 
 installdeps:
 	go get ./...
 
 clean:
 	rm -f ${TARGET}
-	go clean
+	go clean -x
 
 re: clean ${TARGET}
 
