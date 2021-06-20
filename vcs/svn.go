@@ -60,6 +60,18 @@ func (s *Svn) Stage(options VersionControlOptions) error {
 }
 
 // Retrieve commits without parents
-func (s *Svn) GetRootCommits() ([]string, error) {
+func (s *Svn) RootCommits() ([]string, error) {
 	return nil, errNotYetImpl
+}
+
+// Get the hash of the current commit
+func (s *Svn) CurrentCommit(options VersionControlOptions) (hash, subject string, err error) {
+	err = errNotYetImpl
+	return
+}
+
+// Get the hash of the current commit
+func (s *Svn) ExtractLog(options VersionControlOptions) (lines []string, err error) {
+	err = errNotYetImpl
+	return
 }

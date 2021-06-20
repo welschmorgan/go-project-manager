@@ -14,6 +14,8 @@ import (
 	"github.com/welschmorgan/go-release-manager/log"
 )
 
+const DEFAULT_LOG_FORMAT = "%s"
+
 type Git struct {
 	VersionControlSoftware
 	path string
@@ -588,8 +590,8 @@ func (g *Git) Stage(options VersionControlOptions) error {
 }
 
 // Retrieve commits without parents
-func (g *Git) GetRootCommits() ([]string, error) {
-	log.Trace("[VCS_TRACE] GetRootCommits - %s", g.path)
+func (g *Git) RootCommits() ([]string, error) {
+	log.Trace("[VCS_TRACE] RootCommits - %s", g.path)
 	fs.Pushd(g.path)
 	defer fs.Popd()
 	args := []string{
@@ -598,4 +600,113 @@ func (g *Git) GetRootCommits() ([]string, error) {
 	code, out, errTxt, err := exec.RunCommand("git", args...)
 	exec.DumpCommandErrors(code, errTxt)
 	return out, err
+}
+
+// Retrieve commits without parents
+func (g *Git) CurrentCommit(options VersionControlOptions) (hash, subject string, err error) {
+	log.Trace("[VCS_TRACE] CurrentCommit - %s", g.path)
+
+	// parse options
+	var opts CurrentCommitOptions
+	if ret, err := getOptions(options, CurrentCommitOptions{
+		ShortHash: false,
+	}); err != nil {
+		return "", "", err
+	} else {
+		opts = ret.(CurrentCommitOptions)
+	}
+
+	// format as short or long
+	logOpts := ExtractLogOptions{
+		Limit: 1,
+	}
+	if opts.ShortHash {
+		logOpts.Format = "%h|%s"
+	} else {
+		logOpts.Format = "%H|%s"
+	}
+
+	// run command
+	var lines []string
+	if lines, err = g.ExtractLog(logOpts); err != nil {
+		return
+	}
+
+	// retrieve first non-empty line
+	line := ""
+	for _, line = range lines {
+		line = strings.TrimSpace(line)
+		if len(line) != 0 {
+			break
+		}
+	}
+
+	if len(line) == 0 {
+		err = fmt.Errorf("no commits yet")
+		return
+	}
+
+	// split log line
+	lineParts := strings.SplitN(line, "|", 2)
+	if len(lineParts) != 2 {
+		err = fmt.Errorf("ill-formatted line detected, expected '<hash>|<subject>' but got '%s'", line)
+		return
+	}
+
+	hash = lineParts[0]
+	subject = lineParts[1]
+	return
+}
+
+func (g *Git) ExtractLog(options VersionControlOptions) (lines []string, err error) {
+	log.Trace("[VCS_TRACE] ExtractLog")
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	args := []string{
+		"log", "-n", "1",
+	}
+	var code int
+	var stdout []string
+	var stderr []string
+
+	// parse options
+	var opts ExtractLogOptions
+	if ret, err := getOptions(options, ExtractLogOptions{
+		Limit:  -1,
+		Format: DEFAULT_LOG_FORMAT,
+		Branch: config.Get().BranchNames["development"],
+	}); err != nil {
+		return nil, err
+	} else {
+		opts = ret.(ExtractLogOptions)
+	}
+
+	// format as short or long
+	opts.Branch = strings.TrimSpace(opts.Branch)
+	if len(opts.Branch) > 0 {
+		args = append(args, fmt.Sprintf("--format='%s'", opts.Format))
+	}
+	if opts.Limit >= 0 {
+		args = append(args, "-n", fmt.Sprint(opts.Limit))
+	}
+	opts.Format = strings.TrimSpace(opts.Format)
+	if len(opts.Format) >= 0 {
+		args = append(args, fmt.Sprintf("--format='%s'", opts.Format))
+	}
+
+	// run command
+	code, stdout, stderr, err = exec.RunCommand("git", args...)
+	exec.DumpCommandErrors(code, stderr)
+	if err != nil {
+		return
+	}
+
+	// retrieve non-empty lines
+	for _, stdoutLine := range stdout {
+		stdoutLine = strings.TrimSpace(stdoutLine)
+		if len(stdoutLine) != 0 {
+			lines = append(lines, stdoutLine)
+		}
+	}
+	return
 }

@@ -3,6 +3,7 @@ package maven
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 )
@@ -53,7 +54,9 @@ func (a *ProjectAccessor) Detect(p string) (bool, error) {
 }
 
 func (a *ProjectAccessor) Version() (string, error) {
-	return a.pom.Root.Version, nil
+	v := a.pom.Root.Version
+	v = strings.Replace(v, "-SNAPSHOT", "", 1)
+	return v, nil
 }
 
 func (a *ProjectAccessor) Name() (string, error) {

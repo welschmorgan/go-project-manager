@@ -147,6 +147,7 @@ func (r *Release) Do() error {
 	if err = r.ReleaseFinish(); err != nil {
 		return err
 	}
+
 	if err = r.BumpVersion(); err != nil {
 		return err
 	}

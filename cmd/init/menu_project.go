@@ -120,7 +120,7 @@ func (m *ProjectMenu) CreateFinalizationContext(workspace *config.Workspace, pro
 		ctx.RepositoryInitialized = true
 		exec.SHOW_ERRORS = false
 		rootCommits := []string{}
-		if rootCommits, err = ctx.VC.GetRootCommits(); err == nil && len(rootCommits) > 0 {
+		if rootCommits, err = ctx.VC.RootCommits(); err == nil && len(rootCommits) > 0 {
 			ctx.InitialCommitExists = true
 		}
 		exec.SHOW_ERRORS = true

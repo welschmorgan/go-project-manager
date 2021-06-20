@@ -39,7 +39,7 @@ type VersionControlSoftware interface {
 	Stage(options VersionControlOptions) error
 
 	// Retrieve commits without parents
-	GetRootCommits() ([]string, error)
+	RootCommits() ([]string, error)
 
 	// Create a new commit
 	Commit(options VersionControlOptions) error
@@ -49,6 +49,12 @@ type VersionControlSoftware interface {
 
 	// Get the name of the currently checked out branch
 	CurrentBranch() (string, error)
+
+	// Get the hash of the current commit
+	CurrentCommit(options VersionControlOptions) (hash, subject string, err error)
+
+	// Get the hash of the current commit
+	ExtractLog(options VersionControlOptions) (lines []string, err error)
 
 	// Checkout a specific branch
 	Checkout(branch string, options VersionControlOptions) error

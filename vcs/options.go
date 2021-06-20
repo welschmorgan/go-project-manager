@@ -22,21 +22,25 @@ func getOptions(options, defaults VersionControlOptions) (VersionControlOptions,
 type InitOptions struct {
 	Bare bool
 }
+
 type CloneOptions struct {
 	Branch   string
 	Insecure bool
 }
+
 type CommitOptions struct {
 	Signed     bool
 	Message    string
 	AllowEmpty bool
 	StageFiles bool
 }
+
 type StageOptions struct {
 	All              bool
 	AllAlreadyStaged bool
 	Files            []string
 }
+
 type CheckoutOptions struct {
 	VersionControlOptions
 	CreateBranch     bool
@@ -104,9 +108,20 @@ type ResetOptions struct {
 	Hard   bool
 	Commit string
 }
+
 type DeleteBranchOptions struct {
 	VersionControlOptions
 	Local      bool
 	Remote     bool
 	RemoteName string
+}
+
+type CurrentCommitOptions struct {
+	ShortHash bool
+}
+
+type ExtractLogOptions struct {
+	Limit  int
+	Format string
+	Branch string
 }

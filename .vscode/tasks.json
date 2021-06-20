@@ -4,6 +4,26 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "build",
+      "type": "shell",
+      "command": "make re",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
       "label": "init",
       "type": "shell",
       "command": "make re && ./grlm init -C /tmp/test-wksp -v=high",
@@ -13,10 +33,7 @@
       "problemMatcher": [
         "$go"
       ],
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      },
+      "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -36,10 +53,7 @@
       "problemMatcher": [
         "$go"
       ],
-      "group": {
-        "kind": "build",
-        "isDefault": false
-      },
+      "group": "build",
       "presentation": {
         "echo": true,
         "reveal": "always",

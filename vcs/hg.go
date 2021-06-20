@@ -60,6 +60,18 @@ func (h *Hg) Stage(options VersionControlOptions) error {
 }
 
 // Retrieve commits without parents
-func (h *Hg) GetRootCommits() ([]string, error) {
+func (h *Hg) RootCommits() ([]string, error) {
 	return nil, errNotYetImpl
+}
+
+// Get the hash of the current commit
+func (h *Hg) CurrentCommit(options VersionControlOptions) (hash, subject string, err error) {
+	err = errNotYetImpl
+	return
+}
+
+// Get the hash of the current commit
+func (h *Hg) ExtractLog(options VersionControlOptions) (lines []string, err error) {
+	err = errNotYetImpl
+	return
 }
