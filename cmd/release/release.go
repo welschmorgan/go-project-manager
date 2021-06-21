@@ -168,7 +168,7 @@ func (r *Release) Step(fmt string, a ...interface{}) {
 }
 
 func (r *Release) SubStep(fmt string, a ...interface{}) {
-	log.Infof("[\033[1;34m*\033[0m] "+fmt+"\n", a...)
+	log.Infof("[\033[1;34m**\033[0m] "+fmt+"\n", a...)
 	config.Get().Indent++
 }
 
@@ -346,13 +346,13 @@ func (r *Release) ReleaseStart() error {
 	return nil
 }
 
-func (r *Release) Merge(source, dest string) error {
+func (r *Release) Merge(source, dest string, options vcs.MergeOptions) error {
 	hashBeforeMerge, hashAfterMerge := "", ""
 	var err error
 	if hashBeforeMerge, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
 		return err
 	}
-	if err := r.Vc.Merge(r.Context.releaseBranch, r.Context.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
+	if err := r.Vc.Merge(source, dest, options); err != nil {
 		return err
 	}
 	if hashAfterMerge, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
@@ -361,8 +361,8 @@ func (r *Release) Merge(source, dest string) error {
 	r.PushUndoAction("merge", r.Project.Path, r.Vc.Name(), map[string]interface{}{
 		"hashBeforeMerge": hashBeforeMerge,
 		"hashAfterMerge":  hashAfterMerge,
-		"source":          r.Context.releaseBranch,
-		"target":          r.Context.prodBranch,
+		"source":          source,
+		"target":          dest,
 	})
 	return nil
 }
@@ -373,7 +373,7 @@ func (r *Release) ReleaseFinish() error {
 	r.Context.state |= ReleaseFinishStarted
 
 	r.SubStep("Merge " + r.Context.releaseBranch + " into " + r.Context.prodBranch)
-	if err := r.Merge(r.Context.releaseBranch, r.Context.prodBranch); err != nil {
+	if err := r.Merge(r.Context.releaseBranch, r.Context.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
 	}
 
@@ -389,7 +389,7 @@ func (r *Release) ReleaseFinish() error {
 
 	r.SubStep("Merge tag " + r.Context.version.String() + " into " + r.Context.devBranch)
 	// retro merge tag into dev branch
-	if err := r.Merge(r.Context.version.String(), r.Context.devBranch); err != nil {
+	if err := r.Merge(r.Context.version.String(), r.Context.devBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
 	}
 

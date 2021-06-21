@@ -6,11 +6,15 @@ import (
 	"os"
 
 	"github.com/welschmorgan/go-release-manager/fs"
+	"github.com/welschmorgan/go-release-manager/version"
 	"gopkg.in/yaml.v2"
 )
 
 type BranchNamesConfig map[string]string
 
+type Versionning struct {
+	PreReleasePrefix string
+}
 type Workspace struct {
 	Name               string            `yaml:"name"`
 	path               string            `yaml:"path"`
@@ -19,6 +23,7 @@ type Workspace struct {
 	Manager            *Person           `yaml:"manager"`
 	Developpers        []*Person         `yaml:"developpers"`
 	BranchNames        BranchNamesConfig `yaml:"branch_names"`
+	Versionning        Versionning       `yaml:"versionning"`
 	AcquireVersionFrom string            `yaml:"acquire_version_from"`
 }
 
@@ -36,6 +41,9 @@ func NewWorkspace() *Workspace {
 			"development": DefaultDevelopmentBranch,
 			"production":  DefaultProductionBranch,
 			"release":     DefaultReleaseBranch,
+		},
+		Versionning: Versionning{
+			PreReleasePrefix: version.PreReleasePrefix,
 		},
 		AcquireVersionFrom: DefaultAcquireVersionFrom,
 	}

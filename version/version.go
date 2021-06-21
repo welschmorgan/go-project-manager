@@ -7,10 +7,11 @@ import (
 	"strings"
 )
 
-const DETECTION_REGEX = `^(?P<major>\d+?|)(\W(?P<minor>\d+?)|)(\W(?P<build>\d+?)|)(\W(?P<revision>\d+?)|)(\W(?P<preRelease>[\d\w]+?)|)(\W(?P<buildMetaTag>[\d\w]+?)|)$`
+const DETECTION_REGEX = `^(?P<major>\d+?|)(\.(?P<minor>\d+?)|)(\.(?P<build>\d+?)|)(\.(?P<revision>\d+?)|)(\-(?P<preRelease>[\d\w]+?)|)(\+(?P<buildMetaTag>[\d\w]+?)|)$`
 
 type Version []string
 
+var PreReleasePrefix = "rc"
 var Zero = New(0, 0, 0)
 var FirstMajor = New(1, 0, 0)
 var FirstMinor = New(0, 1, 0)
@@ -156,6 +157,9 @@ func (v Version) Increment(i VersionPart, step int) error {
 		}
 		if val == "" {
 			val = "0"
+		}
+		if len(prefix) == 0 && i == PreRelease {
+			prefix = PreReleasePrefix
 		}
 		var ival int64
 		if ival, err = strconv.ParseInt(val, 10, 32); err != nil {

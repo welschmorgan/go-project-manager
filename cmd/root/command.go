@@ -129,6 +129,8 @@ func initConfig() {
 		}
 	}
 
+	config.Get().Workspace.Versionning.PreReleasePrefix = config.Get().Versionning.PreReleasePrefix
+
 	if content, err := json.MarshalIndent(*config.Get(), "", "  "); err != nil {
 		panic(err.Error())
 	} else {
