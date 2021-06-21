@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
@@ -14,7 +15,7 @@ var Command = &cobra.Command{
 	Use:   "init [sub]",
 	Short: "Initialize the current folder as a workspace",
 	Long: `Initialize the current folder and turns it into a workspace.
-This will write '.grlm-workspace.yaml' and will interactively ask a few questions.
+This will write '.grlm/workspace.yaml' and will interactively ask a few questions.
 `,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		if _, err := os.Stat(config.Get().WorkspacePath); err == nil {
@@ -24,6 +25,7 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 				return errors.New("abort")
 			}
 		}
+		os.MkdirAll(filepath.Dir(config.Get().WorkspaceFilename), 0755)
 		println("----------------[ General Infos ]--------------")
 		if err = askName(&config.Get().Workspace); err != nil {
 			return err

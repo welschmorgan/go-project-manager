@@ -10,11 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/fs"
+	"github.com/welschmorgan/go-release-manager/release"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/version"
 )
-
-var errAbortRelease = errors.New("release aborted")
 
 var Command = &cobra.Command{
 	Use:   "release <major|minor|build|revision|preRelease|buildMetaTag> [OPTIONS...]",
@@ -41,7 +40,7 @@ func doRelease() (err error) {
 		panic("Workspace has not been initialized, run `grlm init`")
 	}
 
-	releases := []*Release{}
+	releases := []*release.Release{}
 
 	// cleanup release on ctrl-c
 	sigs := make(chan os.Signal, 1)
@@ -83,7 +82,7 @@ func doRelease() (err error) {
 	// }()
 
 	for _, prj := range config.Get().Workspace.Projects {
-		if r, err := NewRelease(prj); err != nil {
+		if r, err := release.NewRelease(prj); err != nil {
 			return err
 		} else {
 			releases = append(releases, r)

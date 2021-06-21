@@ -1,11 +1,11 @@
 package config
 
 type Project struct {
-	Type          string `json:"type,omitempty"`
-	Name          string `json:"name,omitempty"`
-	Path          string `json:"path,omitempty"`
-	Url           string `json:"url,omitempty"`
-	SourceControl string `json:"sourceControl,omitempty"`
+	Type          string `yaml:"type,omitempty"`
+	Name          string `yaml:"name,omitempty"`
+	Path          string `yaml:"path,omitempty"`
+	Url           string `yaml:"url,omitempty"`
+	SourceControl string `yaml:"source_control,omitempty"`
 }
 
 func NewProject(typ, name, path, url, sourceControl string) *Project {

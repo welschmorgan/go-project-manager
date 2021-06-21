@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
@@ -12,7 +13,10 @@ import (
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
 	"github.com/welschmorgan/go-release-manager/version"
+	"gopkg.in/yaml.v2"
 )
+
+var errAbortRelease = errors.New("release aborted")
 
 type Release struct {
 	Project     *config.Project
@@ -158,10 +162,38 @@ func (r *Release) Do() error {
 		return err
 	}
 
+	if err = r.WriteUndos(); err != nil {
+		return err
+	}
 	r.Context.state |= ReleaseFinished
 	return nil
 }
 
+func (r *Release) WriteUndos() error {
+	if data, err := yaml.Marshal(r.UndoActions); err != nil {
+		return err
+	} else {
+		os.MkdirAll(filepath.Join(config.Get().Workspace.Path(), ".grlm/undos"), 0755)
+		dir := filepath.Join(config.Get().Workspace.Path(), ".grlm/undos")
+		numFiles := 0
+		if dirEntries, err := os.ReadDir(dir); err != nil {
+			return err
+		} else {
+			for _, de := range dirEntries {
+				if !de.IsDir() {
+					numFiles++
+				}
+			}
+		}
+		os.MkdirAll(dir, 0755)
+		path := filepath.Join(dir, fmt.Sprintf("%04d", numFiles)+"-"+r.Context.version.String()+".yaml")
+		if err = os.WriteFile(path, data, 0755); err != nil {
+			return err
+		}
+		log.Infof("Undo actions written at: %s\n", path)
+	}
+	return nil
+}
 func (r *Release) Step(fmt string, a ...interface{}) {
 	log.Infof("[\033[1;34m*\033[0m] "+fmt+"\n", a...)
 	config.Get().Indent = 1
@@ -347,22 +379,22 @@ func (r *Release) ReleaseStart() error {
 }
 
 func (r *Release) Merge(source, dest string, options vcs.MergeOptions) error {
-	hashBeforeMerge, hashAfterMerge := "", ""
+	prevHead, nextHead := "", ""
 	var err error
-	if hashBeforeMerge, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+	if prevHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
 		return err
 	}
 	if err := r.Vc.Merge(source, dest, options); err != nil {
 		return err
 	}
-	if hashAfterMerge, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
+	if nextHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
 		return err
 	}
 	r.PushUndoAction("merge", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"hashBeforeMerge": hashBeforeMerge,
-		"hashAfterMerge":  hashAfterMerge,
-		"source":          source,
-		"target":          dest,
+		"prevHead": prevHead,
+		"nextHead": nextHead,
+		"source":   source,
+		"target":   dest,
 	})
 	return nil
 }

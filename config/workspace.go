@@ -13,7 +13,7 @@ import (
 type BranchNamesConfig map[string]string
 
 type Versionning struct {
-	PreReleasePrefix string
+	PreReleasePrefix string `yaml:"pre_release_prefix"`
 }
 type Workspace struct {
 	Name               string            `yaml:"name"`
