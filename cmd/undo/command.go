@@ -1,6 +1,7 @@
 package release
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,12 +57,25 @@ var Command = &cobra.Command{
 			releaseUndoActions = undoActions[release]
 			switch action {
 			case "View":
+				log.Main().SetReportCaller(false)
+				names := []string{"All"}
 				for i, u := range releaseUndoActions {
-					log.Infof("[%d] loaded undo '%s'", i, u.Name)
+					names = append(names, fmt.Sprintf("[%d] %s", i, u.Title))
+				}
+				if step, err := ui.Select("View Step", names); err != nil {
+					return err
+				} else {
+					for i, u := range releaseUndoActions {
+						if fmt.Sprintf("[%d] %s", i, u.Title) == step || step == "All" {
+							log.Main().Infof("[%d] undo '%s' -> %s", i, u.Name, u.Title)
+							log.Main().Debugf("params:\n\tpath: %s\n\tvcs: %s\n\ttitle: %s\n\tparams: %s", u.Path, u.SourceControl, u.Title, u.Params)
+							log.Main().SetReportCaller(false)
+						}
+					}
 				}
 			case "Run":
 				for i, u := range releaseUndoActions {
-					log.Warnf("[%d] running undo '%s'", i, u.Name)
+					log.Warnf("[%d] running undo '%s' -> %s", i, u.Name)
 					if u.VC, err = vcs.Open(u.Path); err != nil {
 						return err
 					}
