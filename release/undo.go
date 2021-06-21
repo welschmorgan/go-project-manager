@@ -9,20 +9,20 @@ import (
 )
 
 type UndoAction struct {
-	Name          string
-	Title         string
-	Path          string
-	SourceControl string
-	VC            vcs.VersionControlSoftware
-	Params        map[string]interface{}
-	Executed      bool
+	Name          string                     `yaml:"name,omitempty"`
+	Title         string                     `yaml:"title,omitempty"`
+	Path          string                     `yaml:"path,omitempty"`
+	SourceControl string                     `yaml:"source_control,omitempty"`
+	VC            vcs.VersionControlSoftware `yaml:"-"`
+	Params        map[string]interface{}     `yaml:"params,omitempty"`
+	Executed      bool                       `yaml:"executed,omitempty"`
 }
 
 var undoActionParams = map[string][]string{
 	"stash_save":    {"name"},
 	"create_branch": {"newBranch", "oldBranch"},
 	"checkout":      {"newBranch", "oldBranch"},
-	"merge":         {"hashBeforeMerge", "hashAfterMerge", "source", "target"},
+	"merge":         {"prevHead", "nextHead", "source", "target"},
 	"create_tag":    {"name"},
 	"bump_version":  {"oldVersion", "newVersion"},
 	"commit":        {"branch", "prevHead", "nextHead", "subject"},
@@ -175,13 +175,13 @@ func (u *UndoAction) undoCheckout() error {
 func (u *UndoAction) undoMerge() error {
 	// source := u.Params["source"].(string)
 	target := u.Params["target"].(string)
-	hashBeforeMerge := u.Params["hashBeforeMerge"].(string)
+	prevHead := u.Params["prevHead"].(string)
 	log.Debugf("Checkout %s", target)
 	if err := u.VC.Checkout(target, nil); err != nil {
 		return err
 	} else {
-		log.Debugf("Reset HEAD to %s", hashBeforeMerge)
-		if err := u.VC.Reset(vcs.ResetOptions{Commit: hashBeforeMerge, Hard: true}); err != nil {
+		log.Debugf("Reset HEAD to %s", prevHead)
+		if err := u.VC.Reset(vcs.ResetOptions{Commit: prevHead, Hard: true}); err != nil {
 			return err
 		}
 	}

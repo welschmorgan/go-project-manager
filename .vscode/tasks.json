@@ -64,6 +64,26 @@
       }
     },
     {
+      "label": "undo",
+      "type": "shell",
+      "command": "make re && ./grlm undo -C /tmp/test-wksp -v=max",
+      "options": {
+        "cwd": "${workspaceFolder}",
+      },
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
       "label": "benchmark",
       "type": "shell",
       "command": "go",
