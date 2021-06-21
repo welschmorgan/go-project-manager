@@ -95,7 +95,7 @@ func (r *Release) PrepareContext() error {
 	// duplicate current version
 	nextVersion := version.Clone(curVersion)
 	// increment it
-	if err := nextVersion.Increment(version.Major, 1); err != nil {
+	if err := nextVersion.Increment(config.Get().ReleaseType, 1); err != nil {
 		return err
 	}
 	r.Context.releaseBranch = strings.ReplaceAll(r.Context.releaseBranch, "$VERSION", curVersion.String())

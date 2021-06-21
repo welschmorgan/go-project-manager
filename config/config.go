@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/welschmorgan/go-release-manager/version"
 )
 
 type Config struct {
@@ -17,6 +19,7 @@ type Config struct {
 	DryRun            bool
 	Interactive       bool
 	LogFolder         string
+	ReleaseType       version.VersionPart
 }
 
 func NewConfig() (*Config, error) {
@@ -35,6 +38,7 @@ func NewConfig() (*Config, error) {
 			DryRun:            DefaultDryRun,
 			Interactive:       DefaultInteractive,
 			LogFolder:         DefaultLogFolder,
+			ReleaseType:       version.Minor,
 		}, nil
 	}
 }

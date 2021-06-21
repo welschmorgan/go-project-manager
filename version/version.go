@@ -11,57 +11,6 @@ const DETECTION_REGEX = `^(?P<major>\d+?|)(\W(?P<minor>\d+?)|)(\W(?P<build>\d+?)
 
 type Version []string
 
-type VersionPart uint8
-
-const (
-	Major VersionPart = iota
-	Minor
-	Build
-	Revision
-	PreRelease
-	BuildMetaTag
-)
-
-type versionPartData struct {
-	id        VersionPart
-	name      string
-	separator string
-}
-
-var versionParts = []versionPartData{
-	{Major, "major", ""},
-	{Minor, "minor", "."},
-	{Build, "build", "."},
-	{Revision, "revision", "."},
-	{PreRelease, "preRelease", "-"},
-	{BuildMetaTag, "buildMetaTag", "+"},
-}
-
-func getData(vp VersionPart) *versionPartData {
-	for _, p := range versionParts {
-		if p.id == vp {
-			return &p
-		}
-	}
-	return nil
-}
-
-func (p VersionPart) String() string {
-	return p.Name()
-}
-
-func (p VersionPart) Id() uint8 {
-	return uint8(versionParts[p].id)
-}
-
-func (p VersionPart) Name() string {
-	return versionParts[p].name
-}
-
-func (p VersionPart) Separator() string {
-	return versionParts[p].separator
-}
-
 var Zero = New(0, 0, 0)
 var FirstMajor = New(1, 0, 0)
 var FirstMinor = New(0, 1, 0)
@@ -205,36 +154,26 @@ func (v Version) Increment(i VersionPart, step int) error {
 			prefix = matches[0][1]
 			val = matches[0][2]
 		}
-		if ival, err := strconv.ParseInt(val, 10, 32); err != nil {
+		if val == "" {
+			val = "0"
+		}
+		var ival int64
+		if ival, err = strconv.ParseInt(val, 10, 32); err != nil {
 			return err
-		} else if len(prefix) > 0 {
-			if err = v.SetString(i, fmt.Sprintf("%s%d", prefix, int(ival)+step)); err != nil {
-				return err
-			}
-			// set next parts to 0
-			for j := uint8(i + 1); j < uint8(len(v)); j++ {
-				if !v.IsEmpty(VersionPart(j)) {
-					if err = v.SetInt(VersionPart(j), 0); err != nil {
-						return err
-					}
+		}
+		if err = v.SetString(i, fmt.Sprintf("%s%d", prefix, int(ival)+step)); err != nil {
+			return err
+		}
+		// set next parts to 0
+		for j := uint8(i + 1); j < uint8(len(v)); j++ {
+			if !v.IsEmpty(VersionPart(j)) {
+				if err = v.SetInt(VersionPart(j), 0); err != nil {
+					return err
 				}
 			}
-			return nil
-		} else {
-			if err = v.SetInt(i, int(ival)+step); err != nil {
-				return err
-			}
-			// set next parts to 0
-			for j := uint8(i + 1); j < uint8(len(v)); j++ {
-				if !v.IsEmpty(VersionPart(j)) {
-					if err = v.SetInt(VersionPart(j), 0); err != nil {
-						return err
-					}
-				}
-			}
-			return nil
 		}
 	}
+	return nil
 }
 
 func (v Version) Decrement(i VersionPart, step int) error {

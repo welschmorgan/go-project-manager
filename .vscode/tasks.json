@@ -46,9 +46,9 @@
     {
       "label": "release",
       "type": "shell",
-      "command": "make re && ./grlm release -C /tmp/test-wksp -v=max",
+      "command": "make re && ./grlm release preRelease -C /tmp/test-wksp -v=max",
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
       },
       "problemMatcher": [
         "$go"

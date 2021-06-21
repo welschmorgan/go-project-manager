@@ -19,7 +19,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
-      "args": ["release", "-C", "/tmp/test-wksp", "-v", "max"]
+      "args": ["release", "preRelease", "-C", "/tmp/test-wksp", "-v", "max"]
     },
     {
       "name": "Test Current File",
