@@ -173,7 +173,8 @@ func (r *Release) WriteUndos() error {
 	if data, err := yaml.Marshal(r.UndoActions); err != nil {
 		return err
 	} else {
-		dir := filepath.Join(config.Get().Workspace.Path(), ".grlm-undos")
+		os.MkdirAll(filepath.Join(config.Get().Workspace.Path(), ".grlm/undos"), 0755)
+		dir := filepath.Join(config.Get().Workspace.Path(), ".grlm/undos")
 		numFiles := 0
 		if dirEntries, err := os.ReadDir(dir); err != nil {
 			return err

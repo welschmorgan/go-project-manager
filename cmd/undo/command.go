@@ -21,7 +21,7 @@ var Command = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var releaseUndoActions = []release.UndoAction{}
-		dir := filepath.Join(config.Get().Workspace.Path(), ".grlm-undos")
+		dir := filepath.Join(config.Get().Workspace.Path(), ".grlm/undos")
 		entries, err := os.ReadDir(dir)
 		if err != nil {
 			return err
