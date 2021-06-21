@@ -1,4 +1,4 @@
-package models
+package config
 
 type Person struct {
 	Name  string `json:"name,omitempty"`

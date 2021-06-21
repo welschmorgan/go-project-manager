@@ -4,17 +4,20 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/models"
-	"github.com/welschmorgan/go-project-manager/ui"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/ui"
 )
 
-func askAuthor(wksp *models.Workspace) error {
+func askAuthor(wksp *config.Workspace) error {
 	var currentUser *user.User
 	var err error
-	var defaultAuthor *models.Person = wksp.Author
-	if defaultAuthor != nil && len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
+	var defaultAuthor *config.Person = wksp.Author
+	if defaultAuthor == nil || len(strings.TrimSpace(defaultAuthor.Name)) == 0 {
 		if currentUser, err = user.Current(); err != nil {
 			return err
+		}
+		if defaultAuthor == nil {
+			defaultAuthor = &config.Person{}
 		}
 		defaultAuthor.Name = currentUser.Name
 		if len(strings.TrimSpace(defaultAuthor.Name)) == 0 {

@@ -6,9 +6,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/welschmorgan/go-project-manager/cmd/config"
-	"github.com/welschmorgan/go-project-manager/ui"
-	"gopkg.in/yaml.v2"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/ui"
 )
 
 var Command = &cobra.Command{
@@ -25,25 +24,30 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 				return errors.New("abort")
 			}
 		}
+		println("----------------[ General Infos ]--------------")
 		if err = askName(&config.Get().Workspace); err != nil {
 			return err
 		}
 		if err = askPath(&config.Get().Workspace); err != nil {
 			return err
 		}
+		println("----------------[ Projects ]--------------")
 		if err = askProjects(&config.Get().Workspace); err != nil {
 			return err
 		}
+		println("----------------[ Author ]--------------")
 		if err = askAuthor(&config.Get().Workspace); err != nil {
 			return err
 		}
+		println("----------------[ Managers ]--------------")
 		if err = askManager(&config.Get().Workspace); err != nil {
 			return err
 		}
+		println("done asking managers")
+		println("----------------[ Developpers ]--------------")
 		if err = askDeveloppers(&config.Get().Workspace); err != nil {
 			return err
 		}
-
 		for _, proj := range config.Get().Workspace.Projects {
 			if _, err := os.Stat(proj.Path); err != nil {
 				if os.IsNotExist(err) {
@@ -57,14 +61,6 @@ This will write '.grlm-workspace.yaml' and will interactively ask a few question
 				}
 			}
 		}
-		if yaml, err := yaml.Marshal(&config.Get().Workspace); err != nil {
-			panic(err.Error())
-		} else {
-			if err := os.WriteFile(config.Get().WorkspacePath, yaml, 0755); err != nil {
-				return err
-			}
-			fmt.Printf("Written '%s':\n%s\n", config.Get().WorkspacePath, yaml)
-		}
-		return nil
+		return config.Get().Workspace.WriteFile(config.Get().WorkspacePath)
 	},
 }

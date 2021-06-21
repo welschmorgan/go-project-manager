@@ -1,9 +1,9 @@
 package init
 
 import (
-	"github.com/welschmorgan/go-project-manager/models"
-	"github.com/welschmorgan/go-project-manager/ui"
-	"github.com/welschmorgan/go-project-manager/vcs"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/ui"
+	"github.com/welschmorgan/go-release-manager/vcs"
 )
 
 type DevelopperMenu struct {
@@ -22,10 +22,10 @@ func validateDevelopper(k, v string) error {
 	return nil
 }
 
-func NewDevelopperMenu(workspace *models.Workspace) (*DevelopperMenu, error) {
+func NewDevelopperMenu(workspace *config.Workspace) (*DevelopperMenu, error) {
 	if menu, err := ui.NewCRUDMenu(
 		workspace,
-		"Developpers", "Name", models.Person{},
+		"Developpers", "Name", config.Person{},
 		[]ui.ObjValidator{
 			validateDevelopper,
 		},
@@ -35,7 +35,13 @@ func NewDevelopperMenu(workspace *models.Workspace) (*DevelopperMenu, error) {
 			ui.ActionEdit.Id:   "Edit existing developper",
 			ui.ActionRemove.Id: "Remove existing developper",
 			ui.ActionClear.Id:  "Clear developpers",
-		}); err != nil {
+		},
+		map[string]ui.ItemFieldType{
+			"Name":  ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Email": ui.NewItemFieldType(ui.ItemFieldText, ""),
+			"Phone": ui.NewItemFieldType(ui.ItemFieldText, ""),
+		},
+		nil, true); err != nil {
 		return nil, err
 	} else {
 		return &DevelopperMenu{
@@ -43,13 +49,14 @@ func NewDevelopperMenu(workspace *models.Workspace) (*DevelopperMenu, error) {
 		}, nil
 	}
 }
+
 func (m *DevelopperMenu) Discover() error {
 	for _, project := range m.Workspace.Projects {
 		s := vcs.Get(project.SourceControl)
 		if err := s.Open(project.Path); err != nil {
 			return err
 		}
-		if projectDeveloppers, err := s.Authors(nil); err != nil {
+		if projectDeveloppers, err := s.ListAuthors(nil); err != nil {
 			return err
 		} else {
 			for _, tmpDev := range projectDeveloppers {
@@ -63,5 +70,5 @@ func (m *DevelopperMenu) Discover() error {
 			}
 		}
 	}
-	return nil
+	return m.CRUDMenu.Discover()
 }

@@ -1,0 +1,6 @@
+workspaces_root: $HOME/development
+log_folder: "$WORKSPACE/logs"
+branche_names: 
+  production: master
+  development: develop
+  release: release/$VERSION

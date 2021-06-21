@@ -5,11 +5,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/welschmorgan/go-project-manager/models"
-	"github.com/welschmorgan/go-project-manager/ui"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/ui"
 )
 
-func askName(wksp *models.Workspace) error {
+func askName(wksp *config.Workspace) error {
 	var dir string
 	var err error
 	if len(strings.TrimSpace(wksp.Name)) == 0 {

@@ -1,6 +1,7 @@
 package root
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,16 +9,18 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/welschmorgan/go-project-manager/cmd/config"
-	initCommand "github.com/welschmorgan/go-project-manager/cmd/init"
-	releaseCommand "github.com/welschmorgan/go-project-manager/cmd/release"
-	"gopkg.in/yaml.v2"
+	"github.com/thediveo/enumflag"
+	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
+	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
+	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 )
 
 var Command = &cobra.Command{
-	Use:   "grlm [commands]",
-	Short: "Release multiple projects in a single go",
-	Long:  `GRLM allows releasing multiple projects declared in a workspace`,
+	Use:          "grlm [commands]",
+	Short:        "Release multiple projects in a single go",
+	Long:         `GRLM allows releasing multiple projects declared in a workspace`,
+	SilenceUsage: true,
 }
 
 // Execute executes the root command.
@@ -38,16 +41,34 @@ func init() {
 	viper.BindPFlag("config", Command.PersistentFlags().Lookup("config"))
 
 	// verbose
-	Command.PersistentFlags().BoolVarP(&config.Get().Verbose, "verbose", "v", config.Get().Verbose, "show additionnal log messages")
+
+	// ⑤ Define the CLI flag parameters for your wrapped enum flag.
+	var VerboseLevels = map[config.VerboseLevel][]string{}
+	for _, v := range config.VerboseLevels {
+		VerboseLevels[v] = v.TextualRepresentations()
+	}
+	Command.PersistentFlags().VarP(
+		enumflag.New(&config.Get().Verbose, "verbose", VerboseLevels, enumflag.EnumCaseInsensitive),
+		"verbose",
+		"v",
+		"show additionnal log messages; can be 'none', 'low', 'normal', 'high', 'max'")
 	viper.BindPFlag("verbose", Command.PersistentFlags().Lookup("verbose"))
 
+	// dry run
+	Command.PersistentFlags().BoolVarP(&config.Get().DryRun, "dry_run", "n", config.Get().DryRun, "simulate commande execution, do not execute them")
+	viper.BindPFlag("dry_run", Command.PersistentFlags().Lookup("dry_run"))
+
 	// change working dir
-	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working-directory", "C", config.Get().WorkingDirectory, "change working directory")
-	viper.BindPFlag("working-directory", Command.PersistentFlags().Lookup("working-directory"))
+	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working_directory", "C", config.Get().WorkingDirectory, "change working directory")
+	viper.BindPFlag("working_directory", Command.PersistentFlags().Lookup("working_directory"))
 
 	// define workspaces root
-	Command.PersistentFlags().StringVar(&config.Get().WorkspacesRoot, "workspaces-root", config.Get().WorkspacesRoot, "The root folder where to find workspaces")
-	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces-root"))
+	Command.PersistentFlags().StringVar(&config.Get().WorkspacesRoot, "workspaces_root", config.Get().WorkspacesRoot, "The root folder where to find workspaces")
+	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces_root"))
+
+	// define log output dir
+	Command.PersistentFlags().StringVar(&config.Get().LogFolder, "log_folder", config.Get().LogFolder, "change where to write logs")
+	viper.BindPFlag("log_folder", Command.PersistentFlags().Lookup("log_folder"))
 
 	// Command.ActionAddCommand(addCmd)
 	Command.AddCommand(initCommand.Command)
@@ -81,21 +102,38 @@ func initConfig() {
 			panic(fmt.Errorf("configuration error: %s", err))
 		}
 	}
-	if config.Get().Verbose {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+
+	if len(config.Get().WorkingDirectory) != 0 {
+		config.Get().Workspace.SetPath(config.Get().WorkingDirectory)
+		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.Path())
 	}
 	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
 		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
-			fmt.Printf("error: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "\033[1;33merror\033[0m: %s\n", err.Error())
 		}
 	}
+
+	if err := log.Setup(); err != nil {
+		panic(err.Error())
+	}
+	log.Debugf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
+
 	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {
 		panic(err.Error())
 	}
 	config.Get().WorkspacePath = filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
-	if content, err := os.ReadFile(config.Get().WorkspacePath); err != nil {
+	if _, err := os.Stat(config.Get().WorkspacePath); err == nil || os.IsExist(err) {
+		log.Infof("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
+		if err = config.Get().Workspace.ReadFile(config.Get().WorkspacePath); err != nil {
+			panic(err.Error())
+		}
+	}
+
+	config.Get().Workspace.Versionning.PreReleasePrefix = config.Get().Versionning.PreReleasePrefix
+
+	if content, err := json.MarshalIndent(*config.Get(), "", "  "); err != nil {
 		panic(err.Error())
-	} else if err = yaml.Unmarshal(content, &config.Get().Workspace); err != nil {
-		panic(err.Error())
+	} else {
+		log.Debugf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
 	}
 }
