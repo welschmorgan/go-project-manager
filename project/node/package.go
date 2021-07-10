@@ -94,13 +94,13 @@ func (p Package) Read(b []byte) error {
 	return nil
 }
 
-func (p Package) ReadFile(fname string) error {
-	if _, err := os.Stat(fname); err == nil || os.IsExist(err) {
-		if content, err := os.ReadFile(fname); err != nil {
-			return err
-		} else if err := p.Read(content); err != nil {
+func (p Package) ReadFile(fname string) (err error) {
+	if _, err = os.Stat(fname); err == nil || os.IsExist(err) {
+		var content []byte
+		if content, err = os.ReadFile(fname); err != nil {
 			return err
 		}
+		err = p.Read(content)
 	}
-	return nil
+	return err
 }

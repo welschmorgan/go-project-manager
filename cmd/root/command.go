@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -128,6 +130,15 @@ func initConfig() {
 		log.Infof("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
 		if err = config.Get().Workspace.ReadFile(config.Get().WorkspacePath); err != nil {
 			panic(err.Error())
+		}
+		dotDir := regexp.MustCompile(`^\s*\./`)
+		wkspDir := config.Get().Workspace.Path()
+		if !strings.HasSuffix(wkspDir, string(os.PathSeparator)) {
+			wkspDir += string(os.PathSeparator)
+		}
+		for _, proj := range config.Get().Workspace.Projects {
+			proj.Path = dotDir.ReplaceAllString(proj.Path, wkspDir)
+			proj.Path = strings.ReplaceAll(proj.Path, "$WORKSPACE", wkspDir)
 		}
 	}
 

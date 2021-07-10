@@ -3,6 +3,7 @@ package vcs
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/welschmorgan/go-release-manager/config"

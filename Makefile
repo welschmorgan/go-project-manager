@@ -12,4 +12,7 @@ clean:
 
 re: clean ${TARGET}
 
+test-wksp:
+	cd /tmp && 7z x $$OLDPWD/test-wksp.7z
+
 .PHONY: installdeps clean

@@ -27,10 +27,17 @@ func (g *Git) Path() string { return g.path }
 func (g *Git) Url() string  { return g.url }
 func (g *Git) Detect(path string) error {
 	log.Trace("[VCS_TRACE] Detect")
-	g.path = path
-	if fi, err := os.Stat(filepath.Join(path, ".git")); err != nil {
-		return err
-	} else if !fi.IsDir() {
+	var fi os.FileInfo
+	var projErr, wkspErr error
+	g.path = filepath.Join(path, ".git")
+	if fi, projErr = os.Stat(g.path); projErr != nil {
+		g.path = filepath.Join(config.Get().Workspace.Path(), path, ".git")
+		fi, wkspErr = os.Stat(g.path)
+		if wkspErr != nil && projErr != nil {
+			return fmt.Errorf("failed to find .git folder, looked in:\n- project: '%s'\n- workspace: '%s'", projErr.Error(), wkspErr.Error())
+		}
+	}
+	if !fi.IsDir() {
 		return fmt.Errorf("%s: not a directory", path)
 	}
 	return nil
