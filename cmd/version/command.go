@@ -2,6 +2,7 @@ package version
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -41,7 +42,10 @@ var Command = &cobra.Command{
 		}
 		return nil
 	},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		if _, err = os.Stat(config.Get().WorkspacePath); err != nil && os.IsNotExist(err) {
+			panic("Workspace has not been initialized yet, run `grlm init`")
+		}
 		for _, p := range projects {
 			if a, err := accessor.Open(p.Path); err != nil {
 				return err
