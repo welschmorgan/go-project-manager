@@ -15,6 +15,7 @@ import (
 	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
 	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
 	undoCommand "github.com/welschmorgan/go-release-manager/cmd/undo"
+	versionCommand "github.com/welschmorgan/go-release-manager/cmd/version"
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/log"
 )
@@ -76,6 +77,7 @@ func init() {
 	// Command.ActionAddCommand(addCmd)
 	Command.AddCommand(initCommand.Command)
 	Command.AddCommand(releaseCommand.Command)
+	Command.AddCommand(versionCommand.Command)
 	Command.AddCommand(undoCommand.Command)
 }
 

@@ -1,6 +1,7 @@
 package accessor
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -86,4 +87,33 @@ func GetAllNames() []string {
 		ret = append(ret, a.AccessorName())
 	}
 	return ret
+}
+
+func Detect(p string) (found ProjectAccessor, err error) {
+	errs := []string{}
+	for _, a := range accessors {
+		if _, err = a.Detect(p); err != nil {
+			errs = append(errs, err.Error())
+		} else {
+			found = a
+			break
+		}
+	}
+	err = nil
+	if found == nil {
+		extra := ""
+		if len(errs) > 0 {
+			extra += fmt.Sprintf(":\n\t- %s", strings.Join(errs, "\n\t- "))
+		}
+		err = fmt.Errorf("failed to find suitable project accessor for '%s'%s", p, extra)
+	}
+	return found, err
+}
+
+func Open(p string) (found ProjectAccessor, err error) {
+	if found, err = Detect(p); err != nil {
+		return nil, err
+	}
+	err = found.Open(p)
+	return found, err
 }

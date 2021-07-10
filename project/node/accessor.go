@@ -34,7 +34,6 @@ func (a *ProjectAccessor) Open(p string) error {
 
 func (a *ProjectAccessor) Detect(p string) (bool, error) {
 	fname := filepath.Join(p, a.DescriptionFile())
-	println("Try reading package.json from: " + fname)
 	if _, err := os.Stat(fname); err != nil {
 		return false, err
 	}

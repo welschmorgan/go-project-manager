@@ -53,7 +53,6 @@ func Setup() error {
 	log.SetLevel(config.Get().Verbose.LogLevel())
 
 	logDir := config.Get().Workspace.LogFolder()
-	println("LOG FOLDER: " + logDir)
 	fs.Mkdir(logDir)
 
 	// instanciate main logger
