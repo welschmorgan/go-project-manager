@@ -484,6 +484,7 @@ func (g *Git) ListTags(options VersionControlOptions) ([]string, error) {
 	if ret, err := getOptions(options, ListTagsOptions{
 		SortByTaggerDate:    true,
 		SortByCommitterDate: false,
+		InverseOrder:        false,
 	}); err != nil {
 		return nil, err
 	} else {
@@ -743,4 +744,48 @@ func (g *Git) ListStashes() (lines []string, err error) {
 		}
 	}
 	return
+}
+
+// Fetch remote index
+func (g *Git) FetchIndex(options VersionControlOptions) (err error) {
+	log.Trace("[VCS_TRACE] FetchIndex")
+	fs.Pushd(g.path)
+	defer fs.Popd()
+	args := []string{
+		"fetch",
+	}
+	var code int
+	var stderr []string
+
+	// parse options
+	var opts FetchIndexOptions
+	if ret, err := getOptions(options, FetchIndexOptions{
+		All:   true,
+		Tags:  true,
+		Force: false,
+		Prune: false,
+	}); err != nil {
+		return err
+	} else {
+		opts = ret.(FetchIndexOptions)
+	}
+
+	// format as short or long
+	if opts.All {
+		args = append(args, "--all")
+	}
+	if opts.Prune {
+		args = append(args, "--prune")
+	}
+	if opts.Tags {
+		args = append(args, "--tags")
+	}
+	if opts.Force {
+		args = append(args, "--force")
+	}
+
+	// run command
+	code, _, stderr, err = exec.RunCommand("git", args...)
+	exec.DumpCommandErrors(code, stderr...)
+	return err
 }

@@ -85,11 +85,31 @@ func (r *Release) AcquireVersion() (v version.Version, err error) {
 	return v, nil
 }
 
-func (r *Release) PrepareContext() error {
+func (r *Release) PrepareContext() (err error) {
 	// acquire current version
+
+	if err = os.Chdir(r.Project.Path); err != nil {
+		return err
+	}
+
+	remotes := map[string]string{}
+	if remotes, err = r.Vc.ListRemotes(nil); err != nil {
+		return err
+	} else if len(remotes) > 0 {
+		r.Context.hasRemotes = true
+	}
+	if r.Context.hasRemotes {
+		if err = r.Vc.FetchIndex(vcs.FetchIndexOptions{All: true, Tags: true, Force: true}); err != nil {
+			return err
+		}
+	}
+
+	if err = r.CheckoutAndPullBranch(config.Get().BranchNames["development"]); err != nil {
+		return err
+	}
+
 	var curVersion version.Version
 	var curBranch string
-	var err error
 	if curVersion, err = r.AcquireVersion(); err != nil {
 		return err
 	}
@@ -106,13 +126,18 @@ func (r *Release) PrepareContext() error {
 	r.Context.startingBranch = curBranch
 	r.Context.version = curVersion
 	r.Context.nextVersion = nextVersion
-	r.Context.hasRemotes = false
 
-	remotes := map[string]string{}
-	if remotes, err = r.Vc.ListRemotes(nil); err != nil {
+	tags := []string{}
+	if tags, err = r.Vc.ListTags(nil); err != nil {
 		return err
-	} else if len(remotes) > 0 {
-		r.Context.hasRemotes = true
+	}
+	for _, tag := range tags {
+		if strings.ToLower(r.Context.version.String()) == strings.ToLower(tag) {
+			return fmt.Errorf("Current version '%s' already tagged", r.Context.version)
+		}
+		if strings.ToLower(r.Context.version.String()) == strings.ToLower(tag) {
+			return fmt.Errorf("Next version '%s' already tagged", r.Context.nextVersion)
+		}
 	}
 	return nil
 }
@@ -124,14 +149,6 @@ func (r *Release) Do() error {
 	}
 
 	r.Context.state = ReleaseStarted
-
-	if err = r.CheckoutAndPullBranch(config.Get().BranchNames["development"]); err != nil {
-		return err
-	}
-
-	if err = r.PrepareContext(); err != nil {
-		return err
-	}
 
 	// stash modifications
 	if err = r.StashModifications(); err != nil {

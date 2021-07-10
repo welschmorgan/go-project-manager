@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/fs"
+	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/release"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/version"
@@ -81,14 +82,38 @@ func doRelease() (err error) {
 	// 	}
 	// }()
 
+	errs := make(map[string]string)
 	for _, prj := range config.Get().Workspace.Projects {
 		if r, err := release.NewRelease(prj); err != nil {
 			return err
 		} else {
-			releases = append(releases, r)
-			if err = r.Do(); err != nil {
-				return err
+			if err = r.PrepareContext(); err != nil {
+				errs[prj.Name] = err.Error()
+			} else {
+				releases = append(releases, r)
 			}
+		}
+	}
+	confirmed := true
+	if len(errs) > 0 {
+		confirmed = false
+		log.Errorf("Some project(s) cannot be released:")
+		for key, msg := range errs {
+			log.Errorf("\t- [%s] %s", key, msg)
+		}
+		log.Errorf("However, %d projects can be released:", len(releases))
+		for _, r := range releases {
+			log.Errorf("\t- %s", r.Project.Name)
+		}
+		if confirmed, _ = ui.AskYN("Do you still want to release them"); !confirmed {
+			releases = make([]*release.Release, 0)
+			return release.ErrUserAbort
+		}
+	}
+
+	for _, r := range releases {
+		if err = r.Do(); err != nil {
+			return err
 		}
 	}
 

@@ -93,6 +93,7 @@ type ListTagsOptions struct {
 	VersionControlOptions
 	SortByTaggerDate    bool
 	SortByCommitterDate bool
+	InverseOrder        bool
 }
 
 type TagOptions struct {
@@ -129,4 +130,11 @@ type ExtractLogOptions struct {
 	Limit  int
 	Format string
 	Branch string
+}
+
+type FetchIndexOptions struct {
+	All   bool
+	Prune bool
+	Tags  bool
+	Force bool
 }
