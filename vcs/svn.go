@@ -81,3 +81,8 @@ func (s *Svn) ListStashes() (lines []string, err error) {
 	err = errNotYetImpl
 	return
 }
+
+// Fetch remote index
+func (s *Svn) FetchIndex(options VersionControlOptions) error {
+	return errNotYetImpl
+}

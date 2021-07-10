@@ -81,3 +81,8 @@ func (h *Hg) ListStashes() (lines []string, err error) {
 	err = errNotYetImpl
 	return
 }
+
+// Fetch remote index
+func (h *Hg) FetchIndex(options VersionControlOptions) error {
+	return errNotYetImpl
+}

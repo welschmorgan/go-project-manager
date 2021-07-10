@@ -3,7 +3,6 @@ package vcs
 import (
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 
 	"github.com/welschmorgan/go-release-manager/config"
@@ -35,6 +34,9 @@ type VersionControlSoftware interface {
 
 	// Clone a remote repository
 	Clone(url, path string, options VersionControlOptions) error
+
+	// Fetch remote index
+	FetchIndex(options VersionControlOptions) error
 
 	// Add files to index
 	Stage(options VersionControlOptions) error
