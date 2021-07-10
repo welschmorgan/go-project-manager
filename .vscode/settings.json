@@ -6,6 +6,7 @@
     "**/CVS": true,
     "**/.DS_Store": true,
     "grlm": true,
-    "go.sum": true
+    "go.sum": true,
+    "dist": true,
   }
 }

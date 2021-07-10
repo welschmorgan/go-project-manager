@@ -16,10 +16,7 @@ clean:
 
 re: clean ${TARGET}
 
-test-wksp:
-	cd /tmp && rm -rf /tmp/test-wksp && 7z x $$OLDPWD/test-wksp.7z
-
-install:
+install: ${TARGET}
 	[ -e "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR}
 	[ -e "${INSTALL_DIR}/bin" ] || mkdir -p ${INSTALL_DIR}/bin
 	cp ${TARGET} ${INSTALL_DIR}/bin/${NAME}
@@ -27,4 +24,10 @@ install:
 uninstall:
 	[ ! -e "${INSTALL_DIR}/bin/${NAME}" ] || rm -f ${INSTALL_DIR}/bin/${NAME}
 
-.PHONY: installdeps clean
+devinst: ${TARGET}
+	@mkdir -p ${DIST_DIR}
+	@rm -rf ${DIST_DIR}/test-wksp
+	@cd ${DIST_DIR}; 7z x $$OLDPWD/test-wksp.7z >/dev/null || (echo failed to extract base workspace; exit 1)
+	@echo "export PATH=${DIST_DIR}:$$PATH"
+
+.PHONY: installdeps clean install devinst uninstall re
