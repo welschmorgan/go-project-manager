@@ -2,8 +2,8 @@ package release
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
@@ -11,7 +11,7 @@ import (
 type UndoAction struct {
 	Name          string                     `yaml:"name,omitempty"`
 	Title         string                     `yaml:"title,omitempty"`
-	Path          string                     `yaml:"path,omitempty"`
+	Path          fs.Path                    `yaml:"path,omitempty"`
 	SourceControl string                     `yaml:"source_control,omitempty"`
 	VC            vcs.VersionControlSoftware `yaml:"-"`
 	Params        map[string]interface{}     `yaml:"params,omitempty"`
@@ -64,7 +64,7 @@ var undoActionParamHandlers = map[string]func(*UndoAction) error{
 	},
 }
 
-func NewUndoAction(name, path, vc string, params map[string]interface{}) (*UndoAction, error) {
+func NewUndoAction(name string, path fs.Path, vc string, params map[string]interface{}) (*UndoAction, error) {
 	act := &UndoAction{
 		Name:          name,
 		Title:         "",
@@ -91,7 +91,7 @@ func NewUndoAction(name, path, vc string, params map[string]interface{}) (*UndoA
 
 func (u *UndoAction) Run() error {
 	defer func() { u.Executed = true }()
-	if err := os.Chdir(u.Path); err != nil {
+	if err := u.Path.Chdir(); err != nil {
 		return err
 	}
 	switch u.Name {

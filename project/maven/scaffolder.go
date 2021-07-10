@@ -101,7 +101,7 @@ func (s *MavenScaffolder) Scaffold(ctx *accessor.FinalizationContext) error {
 				return fmt.Errorf("failed to generate maven project archetype, %s", err.Error())
 			}
 			println("copydir")
-			if err = fs.CopyDir(filepath.Join(archetypeDir, artifactId), ctx.PA.Path(), false); err != nil {
+			if err = fs.CopyDir(filepath.Join(archetypeDir, artifactId), ctx.PA.Path().Expand(), false); err != nil {
 				return err
 			}
 			if ctx.RepositoryInitialized {

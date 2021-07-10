@@ -2,17 +2,18 @@ package node
 
 import (
 	"fmt"
+	io_fs "io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/version"
 )
 
 type ProjectAccessor struct {
 	accessor.ProjectAccessor
-	path    string
+	path    fs.Path
 	pkgFile string
 	pkg     Package
 }
@@ -21,20 +22,20 @@ func (a *ProjectAccessor) AccessorName() string {
 	return "Node"
 }
 
-func (a *ProjectAccessor) Path() string {
+func (a *ProjectAccessor) Path() fs.Path {
 	return a.path
 }
 
-func (a *ProjectAccessor) Open(p string) error {
+func (a *ProjectAccessor) Open(p fs.Path) error {
 	a.path = p
 	a.pkg = Package{}
-	a.pkgFile = filepath.Join(p, a.DescriptionFile())
+	a.pkgFile = p.Join(a.DescriptionFile()).Expand()
 	return a.pkg.ReadFile(a.pkgFile)
 }
 
-func (a *ProjectAccessor) Detect(p string) (bool, error) {
-	fname := filepath.Join(p, a.DescriptionFile())
-	if _, err := os.Stat(fname); err != nil {
+func (a *ProjectAccessor) Detect(p fs.Path) (bool, error) {
+	fname := p.Join(a.DescriptionFile())
+	if _, err := fname.Stat(); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -50,6 +51,44 @@ func (a *ProjectAccessor) ReadVersion() (v version.Version, err error) {
 		return nil, fmt.Errorf("failed to parse version from '%s'", vs)
 	}
 	return v, nil
+}
+
+func (a *ProjectAccessor) WriteVersion(v *version.Version) (err error) {
+	var entries []io_fs.DirEntry
+	if entries, err = os.ReadDir(a.Path().Expand()); err != nil {
+		return
+	}
+	var content []byte
+	var contentStr string
+	var path fs.Path
+	var currentVersion version.Version
+	if currentVersion, err = a.ReadVersion(); err != nil {
+		return
+	}
+	var fi os.FileInfo
+	for _, e := range entries {
+		for _, vm := range a.VersionManipulators() {
+			path = a.Path().Join(e.Name())
+			if fi, err = path.Stat(); err != nil {
+				return
+			}
+			if !fi.IsDir() {
+				if content, err = os.ReadFile(path.Expand()); err != nil {
+					return
+				}
+				contentStr = string(content)
+				if vm.Detect(path.Expand(), contentStr, &currentVersion) {
+					if contentStr, err = vm.Update(path.Expand(), contentStr, &currentVersion, v); err != nil {
+						return
+					}
+					if err = os.WriteFile(path.Expand(), []byte(contentStr), 0755); err != nil {
+						return
+					}
+				}
+			}
+		}
+	}
+	return
 }
 
 func (a *ProjectAccessor) Version() (string, error) {

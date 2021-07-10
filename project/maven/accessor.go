@@ -2,19 +2,19 @@ package maven
 
 import (
 	"fmt"
-	"io/fs"
+	io_fs "io/fs"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/version"
 )
 
 type ProjectAccessor struct {
 	accessor.ProjectAccessor
-	path    string
+	path    fs.Path
 	pomFile string
 	pom     *POMProject
 }
@@ -23,7 +23,7 @@ func (a *ProjectAccessor) AccessorName() string {
 	return "Maven"
 }
 
-func (a *ProjectAccessor) Path() string {
+func (a *ProjectAccessor) Path() fs.Path {
 	return a.path
 }
 
@@ -42,16 +42,16 @@ func (a *ProjectAccessor) Scaffolder() accessor.Scaffolder {
 	return &MavenScaffolder{}
 }
 
-func (a *ProjectAccessor) Open(p string) error {
+func (a *ProjectAccessor) Open(p fs.Path) error {
 	a.path = p
 	a.pom = NewPOMProject()
-	a.pomFile = filepath.Join(p, a.DescriptionFile())
+	a.pomFile = p.Join(a.DescriptionFile()).Expand()
 	return a.pom.ReadFile(a.pomFile)
 }
 
-func (a *ProjectAccessor) Detect(p string) (bool, error) {
-	fname := filepath.Join(p, a.DescriptionFile())
-	if _, err := os.Stat(fname); err != nil {
+func (a *ProjectAccessor) Detect(p fs.Path) (bool, error) {
+	fname := p.Join(a.DescriptionFile())
+	if _, err := fname.Stat(); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -71,34 +71,32 @@ func (a *ProjectAccessor) ReadVersion() (v version.Version, err error) {
 }
 
 func (a *ProjectAccessor) WriteVersion(v *version.Version) (err error) {
-	var entries []fs.DirEntry
-	if entries, err = os.ReadDir(a.Path()); err != nil {
-		return
-	}
+	var entries []io_fs.DirEntry
 	var content []byte
 	var contentStr string
-	var path string
+	var path fs.Path
 	var currentVersion version.Version
 	if currentVersion, err = a.ReadVersion(); err != nil {
 		return
 	}
 	var fi os.FileInfo
+	entries, err = a.Path().ReadDir()
 	for _, e := range entries {
 		for _, vm := range a.VersionManipulators() {
-			path = filepath.Join(a.Path(), e.Name())
-			if fi, err = os.Stat(path); err != nil {
+			path = a.Path().Join(e.Name())
+			if fi, err = path.Stat(); err != nil {
 				return
 			}
 			if !fi.IsDir() {
-				if content, err = os.ReadFile(path); err != nil {
+				if content, err = path.ReadFile(); err != nil {
 					return
 				}
 				contentStr = string(content)
-				if vm.Detect(path, contentStr, &currentVersion) {
-					if contentStr, err = vm.Update(path, contentStr, &currentVersion, v); err != nil {
+				if vm.Detect(path.Expand(), contentStr, &currentVersion) {
+					if contentStr, err = vm.Update(path.Expand(), contentStr, &currentVersion, v); err != nil {
 						return
 					}
-					if err = os.WriteFile(path, []byte(contentStr), 0755); err != nil {
+					if err = path.WriteFile([]byte(contentStr)); err != nil {
 						return
 					}
 				}

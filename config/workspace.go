@@ -17,10 +17,11 @@ type Versionning struct {
 }
 type Workspace struct {
 	Name               string            `yaml:"name"`
-	path               string            `yaml:"path"`
+	Path               fs.Path           `yaml:"path"`
 	Projects           []*Project        `yaml:"projects"`
 	Author             *Person           `yaml:"author"`
 	Manager            *Person           `yaml:"manager"`
+	Initialized        bool              `yaml:"-"`
 	Developpers        []*Person         `yaml:"developpers"`
 	BranchNames        BranchNamesConfig `yaml:"branch_names"`
 	Versionning        Versionning       `yaml:"versionning"`
@@ -32,9 +33,10 @@ func NewWorkspace() *Workspace {
 	name := fmt.Sprintf("workspace %5d", rand.Int())
 	return &Workspace{
 		Name:        name,
-		path:        path,
+		Path:        fs.Path(path),
 		Projects:    []*Project{},
 		Author:      nil,
+		Initialized: false,
 		Manager:     nil,
 		Developpers: []*Person{},
 		BranchNames: BranchNamesConfig{
@@ -52,8 +54,9 @@ func NewWorkspace() *Workspace {
 func NewWorkspaceWithValues(name, path string, projects []*Project, sourceControl string, author *Person, manager *Person, developpers []*Person, branchNames BranchNamesConfig, acquireVersionFrom string) *Workspace {
 	return &Workspace{
 		Name:               name,
-		path:               path,
+		Path:               fs.Path(path),
 		Projects:           projects,
+		Initialized:        false,
 		Author:             author,
 		Manager:            manager,
 		Developpers:        developpers,
@@ -68,6 +71,7 @@ func (w *Workspace) ReadFile(path string) error {
 	} else if err = w.Read(content); err != nil {
 		return err
 	}
+	w.Initialized = true
 	return nil
 }
 
@@ -91,17 +95,6 @@ func (w *Workspace) Write() ([]byte, error) {
 	return yaml.Marshal(w)
 }
 
-func (w *Workspace) Path() string {
-	return w.path
-}
-
-func (w *Workspace) SetPath(p string) {
-	w.path = p
-	fs.SanitizePath(w.path, nil)
-}
-
-func (w *Workspace) LogFolder() string {
-	return fs.SanitizePath(Get().LogFolder, map[string]string{
-		"WORKSPACE": w.Path(),
-	})
+func (w *Workspace) LogFolder() fs.Path {
+	return instance.LogFolder
 }

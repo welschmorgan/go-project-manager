@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/project/maven"
@@ -16,7 +17,7 @@ func init() {
 	accessor.Register(&node.ProjectAccessor{})
 }
 
-func Detect(p string) (accessor.ProjectAccessor, error) {
+func Detect(p fs.Path) (accessor.ProjectAccessor, error) {
 	for _, a := range accessor.GetAll() {
 		log.Infof("%sdetect project: %s - %s\n", strings.Repeat("\t", config.Get().Indent), p, a.AccessorName())
 		if ok, err := a.Detect(p); ok {
@@ -29,7 +30,7 @@ func Detect(p string) (accessor.ProjectAccessor, error) {
 	return nil, fmt.Errorf("no accessor found for '%s'", p)
 }
 
-func Open(p string) (accessor.ProjectAccessor, error) {
+func Open(p fs.Path) (accessor.ProjectAccessor, error) {
 	if a, err := Detect(p); err != nil {
 		return nil, err
 	} else {

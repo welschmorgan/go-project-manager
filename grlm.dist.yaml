@@ -1,6 +1,6 @@
-workspaces_root: $HOME/development
-log_folder: "$WORKSPACE/.grlm/logs"
+workspaces_root: ${home}/development
+log_folder: "${workspace}/.grlm/logs"
 branche_names: 
   production: master
   development: develop
-  release: release/$VERSION
+  release: release/${version}

@@ -1,24 +1,26 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/version"
 )
 
 type Config struct {
 	Workspace
 	Indent            int
-	WorkspacesRoot    string
+	WorkspacesRoot    fs.Path
 	Verbose           VerboseLevel
 	CfgFile           string
 	WorkingDirectory  string
 	WorkspaceFilename string
-	WorkspacePath     string
+	WorkspacePath     fs.Path
 	DryRun            bool
 	Interactive       bool
-	LogFolder         string
+	LogFolder         fs.Path
 	ReleaseType       version.VersionPart
 }
 
@@ -28,16 +30,16 @@ func NewConfig() (*Config, error) {
 	} else {
 		return &Config{
 			Workspace:         *NewWorkspace(),
-			WorkspacesRoot:    DefaultWorkspacesRoot,
+			WorkspacesRoot:    fs.Path(DefaultWorkspacesRoot),
 			Verbose:           DefaultVerbose,
 			Indent:            0,
 			CfgFile:           "",
 			WorkingDirectory:  cwd,
 			WorkspaceFilename: DefaultWorkspaceFilename,
-			WorkspacePath:     filepath.Join(cwd, DefaultWorkspaceFilename),
+			WorkspacePath:     fs.Path(filepath.Join(cwd, DefaultWorkspaceFilename)),
 			DryRun:            DefaultDryRun,
 			Interactive:       DefaultInteractive,
-			LogFolder:         DefaultLogFolder,
+			LogFolder:         fs.Path(DefaultLogFolder),
 			ReleaseType:       version.Minor,
 		}, nil
 	}
@@ -51,5 +53,13 @@ func init() {
 	var err error
 	if instance, err = NewConfig(); err != nil {
 		panic(err.Error())
+	}
+}
+
+func (c *Config) Json() string {
+	if jsonCfg, err := json.MarshalIndent(*c, "", "  "); err != nil {
+		panic(err.Error())
+	} else {
+		return string(jsonCfg)
 	}
 }

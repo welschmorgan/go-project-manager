@@ -18,7 +18,7 @@ var Command = &cobra.Command{
 This will write '.grlm/workspace.yaml' and will interactively ask a few questions.
 `,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		if _, err := os.Stat(config.Get().WorkspacePath); err == nil {
+		if config.Get().WorkspacePath.Exists() {
 			if ret, err := ui.AskYN("Workspace already initialized, do you want to reconfigure it"); err != nil {
 				return err
 			} else if !ret {
@@ -51,18 +51,18 @@ This will write '.grlm/workspace.yaml' and will interactively ask a few question
 			return err
 		}
 		for _, proj := range config.Get().Workspace.Projects {
-			if _, err := os.Stat(proj.Path); err != nil {
+			if _, err := proj.Path.Stat(); err != nil {
 				if os.IsNotExist(err) {
 					if ok, err := ui.AskYN(fmt.Sprintf("'%s' does not exist, create project folder", proj.Path)); err != nil {
 						return err
 					} else if ok {
-						if err = os.MkdirAll(proj.Path, 0755); err != nil {
+						if err = proj.Path.Mkdir(); err != nil {
 							return err
 						}
 					}
 				}
 			}
 		}
-		return config.Get().Workspace.WriteFile(config.Get().WorkspacePath)
+		return config.Get().Workspace.WriteFile(config.Get().WorkspacePath.Expand())
 	},
 }

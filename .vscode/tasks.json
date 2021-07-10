@@ -24,9 +24,29 @@
       }
     },
     {
+      "label": "clean",
+      "type": "shell",
+      "command": "make clean",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
       "label": "init",
       "type": "shell",
-      "command": "make re && ./grlm init -C /tmp/test-wksp -v=high",
+      "command": "make re && ./dist/grlm init -C dist/test-wksp -v=high",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -46,7 +66,7 @@
     {
       "label": "release",
       "type": "shell",
-      "command": "make re && ./grlm release preRelease -C /tmp/test-wksp -v=max",
+      "command": "make re && ./dist/grlm release preRelease -C dist/test-wksp -v=max",
       "options": {
         "cwd": "${workspaceFolder}",
       },
@@ -66,7 +86,27 @@
     {
       "label": "undo",
       "type": "shell",
-      "command": "make re && ./grlm undo -C /tmp/test-wksp -v=max",
+      "command": "make re && ./dist/grlm undo -C dist/test-wksp -v=max",
+      "options": {
+        "cwd": "${workspaceFolder}",
+      },
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
+      "label": "version",
+      "type": "shell",
+      "command": "make re && ./dist/grlm version -C dist/test-wksp -v=max",
       "options": {
         "cwd": "${workspaceFolder}",
       },

@@ -53,7 +53,7 @@ func Setup() error {
 	log.SetLevel(config.Get().Verbose.LogLevel())
 
 	logDir := config.Get().Workspace.LogFolder()
-	fs.Mkdir(logDir)
+	fs.Mkdir(logDir.Expand())
 
 	// instanciate main logger
 	Logger(LOGGER_MAIN)
@@ -94,7 +94,7 @@ func Logger(n string) *log.Logger {
 
 		logDir := config.Get().Workspace.LogFolder()
 		if rotatorHook, err := rotatefilehook.NewRotateFileHook(rotatefilehook.RotateFileConfig{
-			Filename:   filepath.Join(logDir, n+".log"),
+			Filename:   filepath.Join(logDir.Expand(), n+".log"),
 			MaxSize:    5, // megabytes
 			MaxBackups: 3,
 			MaxAge:     28, //days

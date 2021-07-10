@@ -37,7 +37,7 @@ var Command = &cobra.Command{
 }
 
 func doRelease() (err error) {
-	if _, err = os.Stat(config.Get().WorkspacePath); err != nil && os.IsNotExist(err) {
+	if !config.Get().Workspace.Initialized {
 		panic("Workspace has not been initialized yet, run `grlm init`")
 	}
 

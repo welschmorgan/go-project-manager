@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project"
 	"github.com/welschmorgan/go-release-manager/ui"
@@ -53,7 +54,7 @@ func NewRelease(p *config.Project) (r *Release, err error) {
 	return r, nil
 }
 
-func (r *Release) PushUndoAction(name, path, vc string, params map[string]interface{}) error {
+func (r *Release) PushUndoAction(name string, path fs.Path, vc string, params map[string]interface{}) error {
 	if act, err := NewUndoAction(name, path, vc, params); err != nil {
 		return err
 	} else {
@@ -88,7 +89,7 @@ func (r *Release) AcquireVersion() (v version.Version, err error) {
 func (r *Release) PrepareContext() (err error) {
 	// acquire current version
 
-	if err = os.Chdir(r.Project.Path); err != nil {
+	if err = r.Project.Path.Chdir(); err != nil {
 		return err
 	}
 
@@ -122,7 +123,9 @@ func (r *Release) PrepareContext() (err error) {
 	if err := nextVersion.Increment(config.Get().ReleaseType, 1); err != nil {
 		return err
 	}
-	r.Context.releaseBranch = strings.ReplaceAll(r.Context.releaseBranch, "$VERSION", curVersion.String())
+	fs.PutPathEnv("version", curVersion.String)
+	fs.PutPathEnv("next_version", curVersion.String)
+	r.Context.releaseBranch = fs.ExpandPath(r.Context.releaseBranch)
 	r.Context.startingBranch = curBranch
 	r.Context.version = curVersion
 	r.Context.nextVersion = nextVersion
@@ -144,7 +147,7 @@ func (r *Release) PrepareContext() (err error) {
 
 func (r *Release) Do() error {
 	var err error
-	if err = os.Chdir(r.Project.Path); err != nil {
+	if err = r.Project.Path.Chdir(); err != nil {
 		return err
 	}
 
@@ -190,10 +193,10 @@ func (r *Release) WriteUndos() error {
 	if data, err := yaml.Marshal(r.UndoActions); err != nil {
 		return err
 	} else {
-		os.MkdirAll(filepath.Join(config.Get().Workspace.Path(), ".grlm/undos"), 0755)
-		dir := filepath.Join(config.Get().Workspace.Path(), ".grlm/undos")
+		undosDir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
+		os.MkdirAll(undosDir, 0755)
 		numFiles := 0
-		if dirEntries, err := os.ReadDir(dir); err != nil {
+		if dirEntries, err := os.ReadDir(undosDir); err != nil {
 			return err
 		} else {
 			for _, de := range dirEntries {
@@ -202,8 +205,8 @@ func (r *Release) WriteUndos() error {
 				}
 			}
 		}
-		os.MkdirAll(dir, 0755)
-		path := filepath.Join(dir, fmt.Sprintf("%04d", numFiles)+"-"+r.Context.version.String()+".yaml")
+		os.MkdirAll(undosDir, 0755)
+		path := filepath.Join(undosDir, fmt.Sprintf("%04d", numFiles)+"-"+r.Context.version.String()+".yaml")
 		if err = os.WriteFile(path, data, 0755); err != nil {
 			return err
 		}
@@ -224,7 +227,7 @@ func (r *Release) SubStep(fmt string, a ...interface{}) {
 func (r *Release) Undo() error {
 	errs := []error{}
 
-	if err := os.Chdir(r.Project.Path); err != nil {
+	if err := r.Project.Path.Chdir(); err != nil {
 		return err
 	}
 

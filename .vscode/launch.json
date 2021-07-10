@@ -11,7 +11,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
-      "args": ["init", "-C", "/tmp/test-wksp", "-v", "max"]
+      "args": ["init", "-C", "dist/test-wksp", "-v", "max"]
     },
     {
       "name": "Launch Package (release)",
@@ -19,7 +19,15 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
-      "args": ["release", "preRelease", "-C", "/tmp/test-wksp", "-v", "max"]
+      "args": ["release", "preRelease", "-C", "dist/test-wksp", "-v", "max"]
+    },
+    {
+      "name": "Launch Package (version)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/main.go",
+      "args": ["version", "-C", "dist/test-wksp", "-v", "max"]
     },
     {
       "name": "Test Current File",

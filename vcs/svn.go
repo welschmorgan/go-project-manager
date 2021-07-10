@@ -2,20 +2,21 @@ package vcs
 
 import (
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 )
 
 type Svn struct {
 	VersionControlSoftware
-	path string
+	path fs.Path
 	url  string
 }
 
-func (s *Svn) Name() string             { return "Svn" }
-func (s *Svn) Path() string             { return s.path }
-func (s *Svn) Url() string              { return s.url }
-func (s *Svn) Detect(path string) error { return errNotYetImpl }
-func (s *Svn) Open(p string) error      { return errNotYetImpl }
-func (s *Svn) Clone(url, path string, options VersionControlOptions) error {
+func (s *Svn) Name() string              { return "Svn" }
+func (s *Svn) Path() fs.Path             { return s.path }
+func (s *Svn) Url() string               { return s.url }
+func (s *Svn) Detect(path fs.Path) error { return errNotYetImpl }
+func (s *Svn) Open(p fs.Path) error      { return errNotYetImpl }
+func (s *Svn) Clone(url string, path fs.Path, options VersionControlOptions) error {
 	return errNotYetImpl
 }
 func (s *Svn) Status(options VersionControlOptions) ([]string, error) {
@@ -47,7 +48,7 @@ func (s *Svn) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }
 
-func (s *Svn) Initialize(path string, options VersionControlOptions) error {
+func (s *Svn) Initialize(path fs.Path, options VersionControlOptions) error {
 	return errNotYetImpl
 }
 

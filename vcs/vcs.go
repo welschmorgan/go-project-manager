@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
 )
 
@@ -18,22 +19,22 @@ type VersionControlSoftware interface {
 	Name() string
 
 	// Retrieve the path of the current repository
-	Path() string
+	Path() fs.Path
 
 	// Retrieve the url of the current repository
 	Url() string
 
 	// Detect if a given path can be handled by this VCS
-	Detect(path string) error
+	Detect(path fs.Path) error
 
 	// Open a local repository, loading infos
-	Open(path string) error
+	Open(path fs.Path) error
 
 	// Initialize a new repository
-	Initialize(path string, options VersionControlOptions) error
+	Initialize(path fs.Path, options VersionControlOptions) error
 
 	// Clone a remote repository
-	Clone(url, path string, options VersionControlOptions) error
+	Clone(url string, path fs.Path, options VersionControlOptions) error
 
 	// Fetch remote index
 	FetchIndex(options VersionControlOptions) error
@@ -127,7 +128,7 @@ func Get(n string) VersionControlSoftware {
 	return nil
 }
 
-func Detect(path string) (VersionControlSoftware, error) {
+func Detect(path fs.Path) (VersionControlSoftware, error) {
 	for _, s := range All {
 		if err := s.Detect(path); err != nil && err != errNotYetImpl {
 			log.Errorf("error: %s: %s: %s\n", path, s.Name(), err.Error())
@@ -138,7 +139,7 @@ func Detect(path string) (VersionControlSoftware, error) {
 	return nil, fmt.Errorf("cannot find suitable vcs, tried %v", AllNames)
 }
 
-func Open(path string) (VersionControlSoftware, error) {
+func Open(path fs.Path) (VersionControlSoftware, error) {
 	if vc, err := Detect(path); err != nil {
 		return nil, err
 	} else {
@@ -149,7 +150,7 @@ func Open(path string) (VersionControlSoftware, error) {
 	}
 }
 
-func Initialize(n, p string, options VersionControlOptions) (VersionControlSoftware, error) {
+func Initialize(n string, p fs.Path, options VersionControlOptions) (VersionControlSoftware, error) {
 	v := Get(n)
 	return v, v.Initialize(p, options)
 }

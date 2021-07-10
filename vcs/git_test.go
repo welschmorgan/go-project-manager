@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/welschmorgan/go-release-manager/fs"
 )
 
 func makeFakeGitRepoWithVCS(t *testing.T, parentDirPrefix string, commits ...string) (g *Git, dir string, err error) {
@@ -16,7 +17,7 @@ func makeFakeGitRepoWithVCS(t *testing.T, parentDirPrefix string, commits ...str
 	}
 	g = &Git{}
 	// t.Logf("Init git in: %s", dir)
-	if err = g.Initialize(dir, InitOptions{}); err != nil {
+	if err = g.Initialize(fs.Path(dir), InitOptions{}); err != nil {
 		return
 	}
 	// t.Logf("-> path is now: %s", g.path)

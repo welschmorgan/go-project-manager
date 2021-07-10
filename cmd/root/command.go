@@ -1,12 +1,9 @@
 package root
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -17,8 +14,12 @@ import (
 	undoCommand "github.com/welschmorgan/go-release-manager/cmd/undo"
 	versionCommand "github.com/welschmorgan/go-release-manager/cmd/version"
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
 )
+
+var workspacesRoot string
+var logFolder string
 
 var Command = &cobra.Command{
 	Use:          "grlm [commands]",
@@ -46,7 +47,6 @@ func init() {
 
 	// verbose
 
-	// ⑤ Define the CLI flag parameters for your wrapped enum flag.
 	var VerboseLevels = map[config.VerboseLevel][]string{}
 	for _, v := range config.VerboseLevels {
 		VerboseLevels[v] = v.TextualRepresentations()
@@ -66,12 +66,15 @@ func init() {
 	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working_directory", "C", config.Get().WorkingDirectory, "change working directory")
 	viper.BindPFlag("working_directory", Command.PersistentFlags().Lookup("working_directory"))
 
+	workspacesRoot = config.Get().WorkspacesRoot.Expand()
+	logFolder = config.Get().LogFolder.Expand()
+
 	// define workspaces root
-	Command.PersistentFlags().StringVar(&config.Get().WorkspacesRoot, "workspaces_root", config.Get().WorkspacesRoot, "The root folder where to find workspaces")
+	Command.PersistentFlags().StringVar(&workspacesRoot, "workspaces_root", workspacesRoot, "The root folder where to find workspaces")
 	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces_root"))
 
 	// define log output dir
-	Command.PersistentFlags().StringVar(&config.Get().LogFolder, "log_folder", config.Get().LogFolder, "change where to write logs")
+	Command.PersistentFlags().StringVar(&logFolder, "log_folder", logFolder, "change where to write logs")
 	viper.BindPFlag("log_folder", Command.PersistentFlags().Lookup("log_folder"))
 
 	// Command.ActionAddCommand(addCmd)
@@ -81,10 +84,49 @@ func init() {
 	Command.AddCommand(undoCommand.Command)
 }
 
+func updateWorkspacePaths() (err error) {
+	cfg := config.Get()
+	cfg.WorkspacesRoot = fs.Path(workspacesRoot)
+	cfg.LogFolder = fs.Path(logFolder)
+
+	if cfg.WorkingDirectory, err = filepath.Abs(cfg.WorkingDirectory); err != nil {
+		return err
+	}
+
+	if len(cfg.WorkingDirectory) != 0 {
+		cfg.Workspace.Path = fs.Path(cfg.WorkingDirectory)
+		cfg.Workspace.Name = filepath.Base(cfg.Workspace.Path.Raw())
+	}
+	if _, err := os.Stat(cfg.WorkingDirectory); err != nil && os.IsNotExist(err) {
+		if err := os.MkdirAll(cfg.WorkingDirectory, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "\033[1;33merror\033[0m: %s\n", err.Error())
+		}
+	}
+	if path, err := filepath.Abs(filepath.Join(cfg.WorkingDirectory, cfg.WorkspaceFilename)); err != nil {
+		return err
+	} else {
+		cfg.WorkspacePath = fs.Path(path)
+	}
+	fs.PutPathEnv("workspace", cfg.Workspace.Path.Expand)
+
+	if cfg.WorkspacePath.Exists() {
+		log.Infof("[\033[1;34m+\033[0m] Using local config file: %s\n", cfg.WorkspacePath)
+		if err = cfg.Workspace.ReadFile(cfg.WorkspacePath.Expand()); err != nil {
+			return err
+		}
+		for _, proj := range cfg.Workspace.Projects {
+			proj.Path = proj.Path.TrimSpace()
+			proj.Path = proj.Path.ReplaceAll("./", "${workspace}/")
+		}
+	}
+	return nil
+}
+
 func initConfig() {
-	if config.Get().CfgFile != "" {
+	cfg := config.Get()
+	if cfg.CfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(config.Get().CfgFile)
+		viper.SetConfigFile(cfg.CfgFile)
 	} else {
 		viper.SetConfigName("grlm")        // name of config file (without extension)
 		viper.SetConfigType("yaml")        // REQUIRED if the config file does not have the extension in the name
@@ -100,7 +142,8 @@ func initConfig() {
 		fmt.Println("Config file changed:", e.Name)
 	})
 
-	if err := viper.ReadInConfig(); err != nil {
+	var err error
+	if err = viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
 		} else {
@@ -109,46 +152,21 @@ func initConfig() {
 		}
 	}
 
-	if len(config.Get().WorkingDirectory) != 0 {
-		config.Get().Workspace.SetPath(config.Get().WorkingDirectory)
-		config.Get().Workspace.Name = filepath.Base(config.Get().Workspace.Path())
-	}
-	if _, err := os.Stat(config.Get().WorkingDirectory); err != nil && os.IsNotExist(err) {
-		if err := os.MkdirAll(config.Get().WorkingDirectory, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "\033[1;33merror\033[0m: %s\n", err.Error())
-		}
-	}
-
-	if err := log.Setup(); err != nil {
-		panic(err.Error())
-	}
 	log.Debugf("[\033[1;34m+\033[0m] Using config file: %s\n", viper.ConfigFileUsed())
 
-	if err := os.Chdir(config.Get().WorkingDirectory); err != nil {
+	if err = updateWorkspacePaths(); err != nil {
 		panic(err.Error())
 	}
-	config.Get().WorkspacePath = filepath.Join(config.Get().WorkingDirectory, config.Get().WorkspaceFilename)
-	if _, err := os.Stat(config.Get().WorkspacePath); err == nil || os.IsExist(err) {
-		log.Infof("[\033[1;34m+\033[0m] Using local config file: %s\n", config.Get().WorkspacePath)
-		if err = config.Get().Workspace.ReadFile(config.Get().WorkspacePath); err != nil {
-			panic(err.Error())
-		}
-		dotDir := regexp.MustCompile(`^\s*\./`)
-		wkspDir := config.Get().Workspace.Path()
-		if !strings.HasSuffix(wkspDir, string(os.PathSeparator)) {
-			wkspDir += string(os.PathSeparator)
-		}
-		for _, proj := range config.Get().Workspace.Projects {
-			proj.Path = dotDir.ReplaceAllString(proj.Path, wkspDir)
-			proj.Path = strings.ReplaceAll(proj.Path, "$WORKSPACE", wkspDir)
-		}
-	}
 
-	config.Get().Workspace.Versionning.PreReleasePrefix = config.Get().Versionning.PreReleasePrefix
-
-	if content, err := json.MarshalIndent(*config.Get(), "", "  "); err != nil {
+	if err = log.Setup(); err != nil {
 		panic(err.Error())
-	} else {
-		log.Debugf("[\033[1;34m+\033[0m] Configuration: %s\n", content)
 	}
+
+	if err = os.Chdir(cfg.WorkingDirectory); err != nil {
+		panic(err.Error())
+	}
+
+	cfg.Workspace.Versionning.PreReleasePrefix = cfg.Versionning.PreReleasePrefix
+
+	log.Debugf("[\033[1;34m+\033[0m] Configuration: %s\n", cfg.Json())
 }

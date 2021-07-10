@@ -3,15 +3,15 @@ package config
 var (
 	// Used for flags.
 	DefaultWorkspaceFilename  string       = ".grlm/workspace.yaml"
-	DefaultWorkspacesRoot     string       = "$HOME/development"
+	DefaultWorkspacesRoot     string       = "${home}/development"
 	DefaultDevelopmentBranch  string       = "develop"
 	DefaultProductionBranch   string       = "master"
-	DefaultReleaseBranch      string       = "release/$VERSION"
+	DefaultReleaseBranch      string       = "release/${version}"
 	DefaultVerbose            VerboseLevel = NoVerbose
 	DefaultDryRun             bool         = false
 	DefaultInteractive        bool         = false
 	DefaultAcquireVersionFrom string       = "package"
-	DefaultLogFolder          string       = "$WORKSPACE/.grlm/logs"
+	DefaultLogFolder          string       = "${workspace}/.grlm/logs"
 
 	instance *Config
 )

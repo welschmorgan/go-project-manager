@@ -11,7 +11,7 @@ func AskProject(label string, defaults *config.Project, validators ...ObjValidat
 	defaultUrl := ""
 	if defaults != nil {
 		defaultName = defaults.Name
-		defaultPath = defaults.Path
+		defaultPath = defaults.Path.Raw()
 		defaultUrl = defaults.Url
 	}
 	if proj, err := AskObject(label, defaults, map[string]ItemFieldType{

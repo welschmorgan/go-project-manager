@@ -2,20 +2,21 @@ package vcs
 
 import (
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/fs"
 )
 
 type Hg struct {
 	VersionControlSoftware
-	path string
+	path fs.Path
 	url  string
 }
 
-func (h *Hg) Name() string             { return "Hg" }
-func (h *Hg) Path() string             { return h.path }
-func (h *Hg) Url() string              { return h.url }
-func (h *Hg) Detect(path string) error { return errNotYetImpl }
-func (h *Hg) Open(p string) error      { return errNotYetImpl }
-func (h *Hg) Clone(url, path string, options VersionControlOptions) error {
+func (h *Hg) Name() string              { return "Hg" }
+func (h *Hg) Path() fs.Path             { return h.path }
+func (h *Hg) Url() string               { return h.url }
+func (h *Hg) Detect(path fs.Path) error { return errNotYetImpl }
+func (h *Hg) Open(p fs.Path) error      { return errNotYetImpl }
+func (h *Hg) Clone(url string, path fs.Path, options VersionControlOptions) error {
 	return errNotYetImpl
 }
 func (h *Hg) Status(options VersionControlOptions) ([]string, error) {
@@ -48,7 +49,7 @@ func (h *Hg) ListTags(options VersionControlOptions) ([]string, error) {
 	return nil, errNotYetImpl
 }
 
-func (h *Hg) Initialize(path string, options VersionControlOptions) error {
+func (h *Hg) Initialize(path fs.Path, options VersionControlOptions) error {
 	return errNotYetImpl
 }
 func (h *Hg) Commit(options VersionControlOptions) error {

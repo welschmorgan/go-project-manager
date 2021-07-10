@@ -2,15 +2,15 @@ package init
 
 import (
 	"fmt"
-	"io/fs"
+	io_fs "io/fs"
 	"log"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/exec"
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
@@ -22,7 +22,7 @@ const projectMenuItemsSubKey = "Name"
 func projectMenuDefaultItem(w *config.Workspace) *config.Project {
 	return &config.Project{
 		Name: fmt.Sprintf("project %2.2d", rand.Int()),
-		Path: w.Path() + "/project",
+		Path: w.Path.Join("project"),
 	}
 }
 
@@ -176,10 +176,10 @@ func (m *ProjectMenu) FinalizeProject(workspace *config.Workspace, item interfac
 }
 
 func (m *ProjectMenu) createProjectFolder(ctx *accessor.FinalizationContext) error {
-	if fi, err := os.Stat(ctx.Project.Path); err != nil {
+	if fi, err := ctx.Project.Path.Stat(); err != nil {
 		if os.IsNotExist(err) {
 			if ctx.UserWantsFolderCreation, _ = ui.AskYN("Project folder does not exist, do you want to create it"); ctx.UserWantsFolderCreation {
-				if err := os.MkdirAll(ctx.Project.Path, 0755); err != nil {
+				if err := ctx.Project.Path.Mkdir(); err != nil {
 					return err
 				}
 			} else {
@@ -240,7 +240,7 @@ func (m *ProjectMenu) checkBranches(ctx *accessor.FinalizationContext) (err erro
 func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
 	projType := ""
 	for _, p := range m.Workspace.Projects {
-		if p.Path == path {
+		if p.Path.Expand() == path {
 			projType = strings.TrimSpace(p.Type)
 			break
 		}
@@ -249,7 +249,7 @@ func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
 	if len(projType) == 0 {
 		for _, n := range accessor.GetAllNames() {
 			a := accessor.Get(n)
-			if ok, err := a.Detect(path); err == nil && ok {
+			if ok, err := a.Detect(fs.Path(path)); err == nil && ok {
 				projType = a.AccessorName()
 				break
 			}
@@ -268,7 +268,7 @@ func (m *ProjectMenu) DetectProjectAccessor(path string) (string, error) {
 func (m *ProjectMenu) Discover() error {
 	var cwd string
 	var err error
-	var entries []fs.DirEntry
+	var entries []io_fs.DirEntry
 	if cwd, err = os.Getwd(); err != nil {
 		return err
 	}
@@ -277,14 +277,14 @@ func (m *ProjectMenu) Discover() error {
 	}
 	var knownProject *config.Project = nil
 	var sourceControl vcs.VersionControlSoftware = nil
-	var projFolder = ""
+	var projFolder fs.Path
 	var projUrl = ""
 	var projVCS = ""
 	for _, dir := range entries {
 		if dir.IsDir() && !strings.HasPrefix(strings.TrimSpace(dir.Name()), ".") {
 			knownProject = nil
 			sourceControl = nil
-			projFolder = filepath.Join(cwd, dir.Name())
+			projFolder = fs.Path(cwd).Join(dir.Name())
 			projUrl = ""
 			projVCS = ""
 			// try and find a corresponding workspace project declaration
@@ -315,11 +315,11 @@ func (m *ProjectMenu) Discover() error {
 			}
 			// find project accessor
 			projType := ""
-			if projType, err = m.DetectProjectAccessor(projFolder); err != nil {
+			if projType, err = m.DetectProjectAccessor(projFolder.Expand()); err != nil {
 				return err
 			}
 			// create new entry
-			newItem := *config.NewProject(projType, dir.Name(), projFolder, projUrl, projVCS)
+			newItem := *config.NewProject(projType, dir.Name(), projFolder.Expand(), projUrl, projVCS)
 			if knownProject != nil {
 				newItem.Name = knownProject.Name
 				newItem.Path = knownProject.Path

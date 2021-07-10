@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/version"
 )
 
@@ -22,7 +23,7 @@ type ProjectAccessor interface {
 	AccessorName() string
 
 	// Retrieve the path of the project
-	Path() string
+	Path() fs.Path
 
 	// Retrieve the name of the project file
 	DescriptionFile() string
@@ -34,10 +35,10 @@ type ProjectAccessor interface {
 	Scaffolder() Scaffolder
 
 	// Detect if this accessor is suitable to retrieve data for the given project
-	Detect(p string) (bool, error)
+	Detect(p fs.Path) (bool, error)
 
 	// Open a path, and retrieve all possible data
-	Open(p string) error
+	Open(p fs.Path) error
 
 	// Retrieve the current project version
 	ReadVersion() (version.Version, error)
@@ -89,7 +90,7 @@ func GetAllNames() []string {
 	return ret
 }
 
-func Detect(p string) (found ProjectAccessor, err error) {
+func Detect(p fs.Path) (found ProjectAccessor, err error) {
 	errs := []string{}
 	for _, a := range accessors {
 		if _, err = a.Detect(p); err != nil {
@@ -110,7 +111,7 @@ func Detect(p string) (found ProjectAccessor, err error) {
 	return found, err
 }
 
-func Open(p string) (found ProjectAccessor, err error) {
+func Open(p fs.Path) (found ProjectAccessor, err error) {
 	if found, err = Detect(p); err != nil {
 		return nil, err
 	}
