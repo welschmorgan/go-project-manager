@@ -65,7 +65,6 @@ class App {
 
   onViewFetched = (component, response, counter) => {
     component.html = response || "";
-    component.linkTemplateVars();
     counter();
   };
 
