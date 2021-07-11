@@ -33,3 +33,11 @@ body, html {
   flex-flow: row wrap;
   list-style-type: none;
 }
+
+fieldset {
+  border: 0;
+}
+
+fieldset label {
+  min-width: 3rem;
+}

@@ -108,6 +108,7 @@ func (s *APIServer) getWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) Serve() {
 	s.mux.HandleFunc("/home", s.getHome)
 	s.mux.HandleFunc("/api/projects", s.getProjects)
+	s.mux.HandleFunc("/api/projects/scan", s.getProjects)
 	s.mux.HandleFunc("/api/versions", s.getVersions)
 	s.mux.HandleFunc("/api/workspace", s.getWorkspace)
 
@@ -117,31 +118,7 @@ func (s *APIServer) Serve() {
 }
 
 func (s *APIServer) provideAssets() error {
-	// dir, err := AssetDir("")
-	// if err != nil {
-	// 	return err
-	// }
-	// mimeTypes := map[string]string {
-	// 	".js": "text/javascript",
-	// 	".css": "text/css",
-	// 	".html": "text/html",
-	// }
-	// for _, d := range dir {
-	// 	mimeType := "text/plain"
-	// 	for k, v := range mimeTypes {
-	// 		if d
-	// 	}
-	// 	provideAsset(d, "")
-
 	s.mux.Handle("/", http.FileServer(AssetFile()))
-	// s.provideAsset("app/main.js", "text/javascript")
-	// s.provideAsset("app/style.css", "text/css")
-	// s.provideAsset("app/pages/projects/projects.html", "text/html")
-	// s.provideAsset("app/pages/projects/projects.js", "text/javascript")
-	// s.provideAsset("app/pages/home/home.html", "text/html")
-	// s.provideAsset("app/pages/home/home.js", "text/javascript")
-	// s.provideAsset("app/pages/versions/versions.html", "text/html")
-	// s.provideAsset("app/pages/versions/versions.js", "text/javascript")
 	return nil
 }
 

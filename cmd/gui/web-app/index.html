@@ -10,9 +10,16 @@
     
     <div id="view"></div>
     
+    <div id="status-bar"></div>
+
+    <script type="text/javascript" src="/core/view.js"></script>
+    <script type="text/javascript" src="/core/component.js"></script>
     <script type="text/javascript" src="/app/main.js"></script>
     <script type="text/javascript">
-      app = new App();
+      app = new App({
+        mainMenuSelector: '#main-menu',
+        viewContainerSelector: '#view'
+      });
     </script>
   </body>
 </html>

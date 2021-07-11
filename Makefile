@@ -17,6 +17,7 @@ ${TARGET}: assets main.go
 
 installdeps:
 	go get ./...
+	go get -u -v github.com/codeskyblue/fswatch
 	go get -u github.com/go-bindata/go-bindata/...
 
 clean:

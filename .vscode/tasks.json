@@ -84,9 +84,9 @@
       }
     },
     {
-      "label": "gui",
+      "label": "gui:watch",
       "type": "shell",
-      "command": "make re && ./dist/grlm gui -C dist/test-wksp -v=max",
+      "command": "fswatch --config fsw.gui.yml",
       "options": {
         "cwd": "${workspaceFolder}",
       },
