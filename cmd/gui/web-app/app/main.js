@@ -49,7 +49,7 @@ class App {
             resolve(name)
           }
         };
-        fetch('app/pages/' + name + '.js')
+        fetch('app/pages/' + name + '/' + name + '.js')
           .then((response) => response.text())
           .then((response) => {
             const scr = document.createElement('script');
@@ -61,7 +61,7 @@ class App {
             page.instance = new (page.factory)();
             checkAllFiles();
           }, alert);
-        fetch('app/pages/' + name + '.html')
+        fetch('app/pages/' + name + '/' + name + '.html')
           .then((response) => response.text())
           .then((response) => {
             page.html = response;

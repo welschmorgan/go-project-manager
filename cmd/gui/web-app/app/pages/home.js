@@ -1,7 +1,0 @@
-class Home {
-  constructor() {
-  }
-
-  init() {
-  }
-}

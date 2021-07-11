@@ -4,17 +4,13 @@
     <link rel="stylesheet" href="/app/style.css" />
   </head>
   <body>
-    <div id="view"></div>
+    <ul class='button-bar'>
+      <li><button onclick="app.navigate('home')">Home</button></li>
+      <li><button onclick="app.navigate('projects')">Projects</button></li>
+      <li><button onclick="app.navigate('versions')">Versions</button></li>
+    </ul>
     
-    <!-- 
-    <h1>Projects</h1>
-    <div class="container">
-      {{for project in projects}}
-        <div class='card'>
-          {{project.Name}}
-        </div>
-      {{endfor projects}}
-    </div> -->
+    <div id="view"></div>
     
     <script type="text/javascript" src="/app/main.js"></script>
     <script type="text/javascript">

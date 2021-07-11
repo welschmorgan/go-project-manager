@@ -25,7 +25,7 @@ clean:
 re: clean all
 
 assets:
-	go-bindata -pkg gui -prefix cmd/gui/web-app -o cmd/gui/assets.go  cmd/gui/web-app/index.html  cmd/gui/web-app/**/*
+	go-bindata -fs -pkg gui -prefix cmd/gui/web-app -o cmd/gui/assets.go  cmd/gui/web-app/...
 
 install: ${TARGET}
 	[ -e "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR}
