@@ -30,6 +30,14 @@
       "args": ["version", "-C", "dist/test-wksp", "-v", "max"]
     },
     {
+      "name": "Launch Package (UI)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/main.go",
+      "args": ["gui", "-C", "dist/test-wksp", "-v", "max"]
+    },
+    {
       "name": "Test Current File",
       "type": "go",
       "request": "launch",

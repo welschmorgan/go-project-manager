@@ -2,20 +2,18 @@
 
 Manage several git repositories for seamless releasing / synchronizing
 
-## Required packages
-
-```shell
-sudo apt get install libgtk-3-dev webkit2gtk-driver libwebkit2gtk-4.0-dev
-```
+## System dependencies
 
 ## How to install dependencies
 
 ```shell
-go get ./...
+make installdeps
 ```
 
 ## How to build
 
 ```shell
-go build -a -o pjm
+make re
 ```
+
+Binaries will get generated in dist/

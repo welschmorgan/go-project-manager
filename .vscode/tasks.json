@@ -84,6 +84,26 @@
       }
     },
     {
+      "label": "gui",
+      "type": "shell",
+      "command": "make re && ./dist/grlm gui -C dist/test-wksp -v=max",
+      "options": {
+        "cwd": "${workspaceFolder}",
+      },
+      "problemMatcher": [
+        "$go"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
+    },
+    {
       "label": "undo",
       "type": "shell",
       "command": "make re && ./dist/grlm undo -C dist/test-wksp -v=max",

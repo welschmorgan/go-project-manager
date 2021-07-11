@@ -11,17 +11,21 @@ all: ${TARGET}
 platforms:
 	GOPATH=/home/darkboss/development/go xgo -branch develop github.com/welschmorgan/go-release-manager
 
-${TARGET}: main.go
-	env GOOS=linux GOARCH=amd64 go build -a -o $@ $^
+${TARGET}: assets main.go
+	env GOOS=linux GOARCH=amd64 go build -a -o $@ main.go
 
 installdeps:
 	go get ./...
+	go get -u github.com/go-bindata/go-bindata/...
 
 clean:
 	rm -f ${TARGET}
 	go clean -x
 
 re: clean all
+
+assets:
+	go-bindata -pkg gui -prefix cmd/gui/web-app -o cmd/gui/assets.go  cmd/gui/web-app/index.html  cmd/gui/web-app/**/*
 
 install: ${TARGET}
 	[ -e "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR}
@@ -37,4 +41,4 @@ devinst: ${TARGET}
 	@cd ${DIST_DIR}; 7z x $$OLDPWD/test-wksp.7z >/dev/null || (echo failed to extract base workspace; exit 1)
 	@echo "export PATH=${DIST_DIR}:$$PATH"
 
-.PHONY: installdeps clean install devinst uninstall re all
+.PHONY: installdeps clean install devinst uninstall re all assets phony
