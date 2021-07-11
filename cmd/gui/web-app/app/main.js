@@ -11,8 +11,9 @@ class App {
       this.mainMenu = document.querySelector(this.mainMenuSelector);
       this.routes = [
         { route: "home", label: "Home" },
-        { route: "projects", label: "Projects" },
-        { route: "versions", label: "Versions" },
+        { route: "projects", label: "Manage Projects" },
+        { route: "versions", label: "Manage Versions" },
+        { route: "undos", label: "Manage Undos" },
       ];
       this.createMenu();
       this.navigate("home");

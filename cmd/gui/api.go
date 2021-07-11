@@ -3,13 +3,18 @@ package gui
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
+	"sort"
 
 	"github.com/welschmorgan/go-release-manager/config"
+	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
+	"github.com/welschmorgan/go-release-manager/release"
 	"github.com/welschmorgan/go-release-manager/version"
+	"gopkg.in/yaml.v2"
 )
 
 type APIServer struct {
@@ -105,11 +110,46 @@ func (s *APIServer) getWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *APIServer) getUndos(w http.ResponseWriter, r *http.Request) {
+	var releaseUndoActions = []release.UndoAction{}
+	dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("failed to read undo directory: " + err.Error()))
+		return
+	}
+	undoActions := map[string][]release.UndoAction{}
+	undoFiles := []string{}
+	path := ""
+	for _, e := range entries {
+		path = filepath.Join(dir, e.Name())
+		if content, err := os.ReadFile(path); err != nil {
+			log.Errorf("Failed to load undo %s, %s", path, err.Error())
+		} else {
+			if err = yaml.Unmarshal(content, &releaseUndoActions); err != nil {
+				log.Errorf("Failed to load undo %s, %s", path, err.Error())
+			}
+			undoActions[e.Name()] = releaseUndoActions
+			undoFiles = append(undoFiles, e.Name())
+		}
+	}
+	sort.Strings(undoFiles)
+
+	if json, err := json.MarshalIndent(undoFiles, "", "  "); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("failed to marshal undos: " + err.Error()))
+	} else {
+		w.WriteHeader(200)
+		w.Write([]byte(json))
+	}
+}
 func (s *APIServer) Serve() {
 	s.mux.HandleFunc("/home", s.getHome)
 	s.mux.HandleFunc("/api/projects", s.getProjects)
 	s.mux.HandleFunc("/api/projects/scan", s.getProjects)
 	s.mux.HandleFunc("/api/versions", s.getVersions)
+	s.mux.HandleFunc("/api/undos", s.getUndos)
 	s.mux.HandleFunc("/api/workspace", s.getWorkspace)
 
 	s.provideAssets()
