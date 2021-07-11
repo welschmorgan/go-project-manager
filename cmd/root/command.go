@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thediveo/enumflag"
+	guiCommand "github.com/welschmorgan/go-release-manager/cmd/gui"
 	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
 	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
 	undoCommand "github.com/welschmorgan/go-release-manager/cmd/undo"
@@ -81,6 +82,7 @@ func init() {
 	Command.AddCommand(initCommand.Command)
 	Command.AddCommand(releaseCommand.Command)
 	Command.AddCommand(versionCommand.Command)
+	Command.AddCommand(guiCommand.Command)
 	Command.AddCommand(undoCommand.Command)
 }
 

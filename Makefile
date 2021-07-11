@@ -2,10 +2,17 @@ NAME=grlm
 DIST_DIR?=dist
 INSTALL_DIR?=/usr/local
 
+LD_FLAGS="-H windowsgui"
+
 TARGET=${DIST_DIR}/${NAME}
 
+all: ${TARGET}
+
+platforms:
+	GOPATH=/home/darkboss/development/go xgo -branch develop github.com/welschmorgan/go-release-manager
+
 ${TARGET}: main.go
-	go build -a -o $@ $^
+	env GOOS=linux GOARCH=amd64 go build -a -o $@ $^
 
 installdeps:
 	go get ./...
@@ -14,7 +21,7 @@ clean:
 	rm -f ${TARGET}
 	go clean -x
 
-re: clean ${TARGET}
+re: clean all
 
 install: ${TARGET}
 	[ -e "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR}
@@ -30,4 +37,4 @@ devinst: ${TARGET}
 	@cd ${DIST_DIR}; 7z x $$OLDPWD/test-wksp.7z >/dev/null || (echo failed to extract base workspace; exit 1)
 	@echo "export PATH=${DIST_DIR}:$$PATH"
 
-.PHONY: installdeps clean install devinst uninstall re
+.PHONY: installdeps clean install devinst uninstall re all
