@@ -13,6 +13,8 @@ class App {
     this.mainMenu = document.querySelector('#main-menu');
     this.currentPage = null;
     this.cachedPages = [];
+    this.baseTitle = '[GRLM:UI]';
+
     this.routes = [
       {route: 'home', label: 'Home'}, 
       {route: 'projects', label: 'Projects'}, 
@@ -20,6 +22,56 @@ class App {
     ];
     this.createMenu();
     this.navigate('home');
+  }
+
+  navigate(name) {
+    const route = this.routes.find(r => r.route === name);
+    setTitle(`${this.baseTitle} ${route ? route.label : name}`);
+    this.view.innerHTML = '';
+    if (this.isPageCached(name)) {
+      const page = this.getCachedPage(name);
+      this.view.innerHTML = page.html
+      page.instance.init();
+    } else {
+      return new Promise((resolve, reject) => {
+        let counter = 0;
+        const page = new Page(name, '');
+        const checkAllFiles = (e) => {
+          counter++;
+          if (counter == 2) {
+            this.view.innerHTML = page.html;
+            if ('init' in page.instance) {
+              page.instance.init();
+            }
+            this.cachedPages.push(page);
+            resolve(name)
+          }
+        };
+        this.fetchPagePart(name, 'js').then((response) => this.onScriptFetched(page, name, response, checkAllFiles), reject);
+        this.fetchPagePart(name, 'html').then((response) => this.onViewFetched(page, response, checkAllFiles), reject);
+      });
+    }
+  }
+
+  onViewFetched = (page, response, counter) => {
+    page.html = response;
+    counter()
+  };
+
+  onScriptFetched = (page, name, response, counter) => {
+    const scr = document.createElement('script');
+    scr.type = "text/javascript";
+    scr.text = response;
+    document.body.appendChild(scr);
+    // eval(response);
+    page.factory = eval(name.charAt(0).toUpperCase() + name.substring(1));
+    page.instance = new (page.factory)();
+    counter();
+  };
+
+  async fetchPagePart(name, ext) {
+    return fetch('app/pages/' + name + '/' + name + '.' + ext)
+          .then((response) => response.text());
   }
 
   createMenuItem(route, label) {
@@ -46,49 +98,6 @@ class App {
       if (page.name === name) {
         return page;
       }
-    }
-  }
-
-  navigate(name) {
-    this.view.innerHTML = '';
-    if (this.isPageCached(name)) {
-      const page = this.getCachedPage(name);
-      this.view.innerHTML = page.html
-      page.instance.init();
-    } else {
-      return new Promise((resolve, reject) => {
-        let counter = 0;
-        const page = new Page(name, '');
-        const checkAllFiles = (e) => {
-          counter++;
-          if (counter == 2) {
-            this.view.innerHTML = page.html;
-            if ('init' in page.instance) {
-              page.instance.init();
-            }
-            this.cachedPages.push(page);
-            resolve(name)
-          }
-        };
-        fetch('app/pages/' + name + '/' + name + '.js')
-          .then((response) => response.text())
-          .then((response) => {
-            const scr = document.createElement('script');
-            scr.type = "text/javascript";
-            scr.text = response;
-            document.body.appendChild(scr);
-            // eval(response);
-            page.factory = eval(name.charAt(0).toUpperCase() + name.substring(1));
-            page.instance = new (page.factory)();
-            checkAllFiles();
-          }, alert);
-        fetch('app/pages/' + name + '/' + name + '.html')
-          .then((response) => response.text())
-          .then((response) => {
-            page.html = response;
-            checkAllFiles()
-          }, alert);
-      });
     }
   }
 

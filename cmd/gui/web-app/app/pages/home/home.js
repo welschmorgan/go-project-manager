@@ -6,7 +6,6 @@ class Home {
     this.view = document.querySelector('#workspace-infos');
     this.workspace = undefined;
     this.view.innerHTML = '';
-
     fetch('/api/workspace')
       .then(res => res.json())
       .then(workspace => {

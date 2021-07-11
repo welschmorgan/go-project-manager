@@ -5,6 +5,7 @@ INSTALL_DIR?=/usr/local
 LD_FLAGS="-H windowsgui"
 
 TARGET=${DIST_DIR}/${NAME}
+ASSET_FILE="cmd/gui/assets.go"
 
 all: ${TARGET}
 
@@ -21,11 +22,12 @@ installdeps:
 clean:
 	rm -f ${TARGET}
 	go clean -x
+	rm -f ${ASSET_FILE}
 
 re: clean all
 
 assets:
-	go-bindata -fs -pkg gui -prefix cmd/gui/web-app -o cmd/gui/assets.go  cmd/gui/web-app/...
+	go-bindata -fs -pkg gui -prefix cmd/gui/web-app -o ${ASSET_FILE}  cmd/gui/web-app/...
 
 install: ${TARGET}
 	[ -e "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR}
