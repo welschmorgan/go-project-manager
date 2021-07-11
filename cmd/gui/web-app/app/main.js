@@ -9,11 +9,32 @@ class Page {
 
 class App {
   constructor() {
-    this.view = document.querySelector('#view')
+    this.view = document.querySelector('#view');
+    this.mainMenu = document.querySelector('#main-menu');
     this.currentPage = null;
     this.cachedPages = [];
-
+    this.routes = [
+      {route: 'home', label: 'Home'}, 
+      {route: 'projects', label: 'Projects'}, 
+      {route: 'versions', label: 'Versions'},
+    ];
+    this.createMenu();
     this.navigate('home');
+  }
+
+  createMenuItem(route, label) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.innerText = label;
+    btn.onclick = () => this.navigate(route);
+    li.appendChild(btn);
+    this.mainMenu.appendChild(li);
+  }
+
+  createMenu() {
+    for (const route of this.routes) {
+      this.createMenuItem(route.route, route.label);
+    }
   }
 
   isPageCached(name) {
@@ -71,11 +92,4 @@ class App {
     }
   }
 
-  loadScript(uri) {
-    const scr = document.createElement('script');
-    scr.type = 'text/javascript';
-    scr.src = uri;
-    document.body.appendChild(scr);
-    return scr;
-  }
 }

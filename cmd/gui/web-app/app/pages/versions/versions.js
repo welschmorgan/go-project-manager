@@ -9,7 +9,6 @@ class Versions {
     fetch("/api/versions")
       .then(res => res.json())
       .then(versions => {
-        debugger;
         this.view.innerHTML = '';
         for (const project of versions) {
           const row = document.createElement('tr');
