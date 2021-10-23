@@ -6,7 +6,7 @@ triggers:
   - '**/*.js'
   - '**/*.css'
   - '!**/test_*.go'
-  - '!cmd/gui/assets.go'
+  - '!cmd/gui/api/assets.go'
   env:
     DEBUG: "1"
   # if shell is true, $cmd will be wrapped with `bash -c`

@@ -1,4 +1,4 @@
-package gui
+package api
 
 import (
 	"encoding/json"
@@ -113,28 +113,61 @@ func (s *APIServer) getWorkspace(w http.ResponseWriter, r *http.Request) {
 func (s *APIServer) getUndos(w http.ResponseWriter, r *http.Request) {
 	var releaseUndoActions = []release.UndoAction{}
 	dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte("failed to read undo directory: " + err.Error()))
-		return
-	}
+	fmt.Println("Scanning ", dir)
 	undoActions := map[string][]release.UndoAction{}
-	undoFiles := []string{}
-	path := ""
-	for _, e := range entries {
-		path = filepath.Join(dir, e.Name())
+	undoFiles := []Undo{}
+	readFile := func(name, path string, fi os.FileInfo) error {
 		if content, err := os.ReadFile(path); err != nil {
-			log.Errorf("Failed to load undo %s, %s", path, err.Error())
+			return fmt.Errorf("failed to load undo %s, %s", path, err.Error())
 		} else {
 			if err = yaml.Unmarshal(content, &releaseUndoActions); err != nil {
-				log.Errorf("Failed to load undo %s, %s", path, err.Error())
+				return fmt.Errorf("failed to load undo %s, %s", path, err.Error())
 			}
-			undoActions[e.Name()] = releaseUndoActions
-			undoFiles = append(undoFiles, e.Name())
+			fmt.Println("Adding ", name)
+			undoActions[name] = releaseUndoActions
+			undoFiles = append(undoFiles, Undo{
+				Name: name,
+				Date: fi.ModTime().String(),
+			})
 		}
+		return nil
 	}
-	sort.Strings(undoFiles)
+	var readDir func(dir string) (err error)
+
+	readDir = func(dir string) (err error) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return fmt.Errorf("failed to read directory: " + err.Error())
+		}
+		path := ""
+		var fi os.FileInfo
+		for _, e := range entries {
+			fmt.Println("Reading ", e.Name())
+			path = filepath.Join(dir, e.Name())
+			err = nil
+			if fi, err = e.Info(); err != nil {
+				log.Errorf("failed to retrieve file infos for %s, %s", path, err.Error())
+			} else if fi.IsDir() {
+				err = readDir(path)
+			} else {
+				err = readFile(e.Name(), path, fi)
+			}
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := readDir(dir); err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	sort.Slice(undoFiles, func(i, j int) bool {
+		return undoFiles[i].Date < undoFiles[j].Date
+	})
 
 	if json, err := json.MarshalIndent(undoFiles, "", "  "); err != nil {
 		w.WriteHeader(500)
@@ -144,6 +177,7 @@ func (s *APIServer) getUndos(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(json))
 	}
 }
+
 func (s *APIServer) Serve() {
 	s.mux.HandleFunc("/home", s.getHome)
 	s.mux.HandleFunc("/api/projects", s.getProjects)

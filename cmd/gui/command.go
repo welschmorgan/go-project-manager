@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/welschmorgan/go-release-manager/cmd/gui/api"
 	"github.com/welschmorgan/go-release-manager/log"
 )
 
@@ -23,7 +24,7 @@ var Command = &cobra.Command{
 			homePage: "home",
 			hostPort: listenAddr,
 		})
-		s := NewAPIServer(listenAddr)
+		s := api.NewAPIServer(listenAddr)
 		viewClosed := make(chan bool)
 		apiStopped := make(chan bool)
 		allTasksDone := make(chan bool)

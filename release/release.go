@@ -193,7 +193,7 @@ func (r *Release) WriteUndos() error {
 	if data, err := yaml.Marshal(r.UndoActions); err != nil {
 		return err
 	} else {
-		undosDir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
+		undosDir := config.Get().Workspace.Path.Join(".grlm", "undos", r.Context.version.String()).Expand()
 		os.MkdirAll(undosDir, 0755)
 		numFiles := 0
 		if dirEntries, err := os.ReadDir(undosDir); err != nil {
