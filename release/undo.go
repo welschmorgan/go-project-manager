@@ -9,13 +9,13 @@ import (
 )
 
 type UndoAction struct {
-	Name          string                     `yaml:"name,omitempty"`
-	Title         string                     `yaml:"title,omitempty"`
-	Path          fs.Path                    `yaml:"path,omitempty"`
-	SourceControl string                     `yaml:"source_control,omitempty"`
-	VC            vcs.VersionControlSoftware `yaml:"-"`
-	Params        map[string]interface{}     `yaml:"params,omitempty"`
-	Executed      bool                       `yaml:"executed,omitempty"`
+	Name          string                     `yaml:"name,omitempty" json:"name,omitempty"`
+	Title         string                     `yaml:"title,omitempty" json:"title,omitempty"`
+	Path          fs.Path                    `yaml:"path,omitempty" json:"path,omitempty"`
+	SourceControl string                     `yaml:"source_control,omitempty" json:"source_control,omitempty"`
+	VC            vcs.VersionControlSoftware `yaml:"-" json:"-"`
+	Params        map[string]interface{}     `yaml:"params,omitempty" json:"params,omitempty"`
+	Executed      bool                       `yaml:"executed,omitempty" json:"executed,omitempty"`
 }
 
 var undoActionParams = map[string][]string{

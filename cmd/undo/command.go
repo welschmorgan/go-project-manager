@@ -1,10 +1,9 @@
-package release
+package undo
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 
 	"github.com/spf13/cobra"
 	"github.com/welschmorgan/go-release-manager/config"
@@ -12,7 +11,6 @@ import (
 	"github.com/welschmorgan/go-release-manager/release"
 	"github.com/welschmorgan/go-release-manager/ui"
 	"github.com/welschmorgan/go-release-manager/vcs"
-	"gopkg.in/yaml.v2"
 )
 
 var Command = &cobra.Command{
@@ -21,33 +19,21 @@ var Command = &cobra.Command{
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var releaseUndoActions = []release.UndoAction{}
-		dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
-		entries, err := os.ReadDir(dir)
+
+		undoActions, err := release.ListUndos()
 		if err != nil {
 			return err
 		}
-		undoActions := map[string][]release.UndoAction{}
-		undoFiles := []string{}
-		path := ""
-		for _, e := range entries {
-			path = filepath.Join(dir, e.Name())
-			if content, err := os.ReadFile(path); err != nil {
-				log.Errorf("Failed to load undo %s, %s", path, err.Error())
-			} else {
-				if err = yaml.Unmarshal(content, &releaseUndoActions); err != nil {
-					log.Errorf("Failed to load undo %s, %s", path, err.Error())
-				}
-				undoActions[e.Name()] = releaseUndoActions
-				undoFiles = append(undoFiles, e.Name())
-			}
+		undoReleases := []string{}
+		for k, _ := range undoActions {
+			undoReleases = append(undoReleases, k)
 		}
-		sort.Strings(undoFiles)
 
 		done := false
 		for !done {
 			release := ""
 			action := ""
-			if release, err = ui.Select("Undo release", undoFiles); err != nil {
+			if release, err = ui.Select("Undo release", undoReleases); err != nil {
 				return err
 			}
 
@@ -82,6 +68,7 @@ var Command = &cobra.Command{
 					if err = u.Run(); err != nil {
 						return err
 					}
+					dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
 					if err = os.Remove(filepath.Join(dir, release)); err != nil && !os.IsNotExist(err) {
 						return err
 					}

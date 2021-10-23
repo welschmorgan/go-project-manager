@@ -1,14 +1,20 @@
 class Undos {
   constructor() {
     this.columns = [
-      {label: 'Name', field: 'name'}, 
-      {label: 'Date', field: 'date'}
+      {getter: (obj) => obj.name}, 
+      {getter: (obj) => obj.title}, 
+      {getter: (obj) => obj.path}, 
+      {getter: (obj) => {
+        const params = Object.entries(obj.params).map(v => `<tr><td>${v[0]}</td><td>${v[1]}</td></tr>`);
+        debugger;
+        return '<table>' + params.join('') + '</table>';
+      }}
     ];
   }
 
   init() {
-    this.view = document.querySelector('#undo-table-body');
-    this.view.innerHTML = 'Loading ...';
+    this.tableBody = document.querySelector('#undo-table-body');
+    // this.loader = new Loader(this.tableBody);
     fetch("/api/undos")
       .then(res => res.json())
       .then(undos => {
@@ -19,16 +25,22 @@ class Undos {
   }
 
   renderUndos() {
-    this.view.innerHTML = 'Got ' + this.undos.length + ' undos';
-    console.log(this.undos);
-    for (const undo of this.undos) {
-      const row = document.createElement('tr');
-      for (const col of this.columns) {
-        const cell = document.createElement('td');
-        cell.textContent = undo[col.field];
-        row.appendChild(cell);
+    const createCell = (row, value) => {
+      const cell = document.createElement('td');
+      cell.innerHTML = value;
+      row.appendChild(cell);
+      return cell;
+    };
+    for (const file in this.undos) {
+      const actions = this.undos[file];
+      for (const action of actions) {
+        const row = document.createElement('tr');
+        createCell(row, file);
+        for (const col of this.columns) {
+          createCell(row, col.getter(action));
+        }
+        this.tableBody.appendChild(row);
       }
-      this.view.appendChild(row);
     }
   }
 }

@@ -66,11 +66,13 @@ class App {
 
   onViewFetched = (component, response, counter) => {
     component.html = response || "";
+    console.info('[main.js] fetched html', component.name, response);
     counter();
   };
 
   onScriptFetched = (component, response, counter) => {
     const prevScr = document.querySelector(`app-${component.name}`);
+    console.info('[main.js] fetched js', component.name, response);
     if (!prevScr) {
       const scr = document.createElement("script");
       scr.type = "text/javascript";
@@ -87,9 +89,11 @@ class App {
   };
 
   async fetchComponentPart(name, ext) {
-    return fetch(this.componentsUrlPrefix + name + "/" + name + "." + ext).then(
-      (response) => response.text()
-    );
+    var myHeaders = new Headers();
+    myHeaders.append('pragma', 'no-cache');
+    myHeaders.append('cache-control', 'no-cache');
+    return fetch(this.componentsUrlPrefix + name + "/" + name + "." + ext, {method: 'GET', headers: myHeaders})
+      .then((response) => response.text());
   }
 
   createMenuItem(route, label) {

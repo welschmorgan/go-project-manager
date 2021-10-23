@@ -28,8 +28,15 @@ clean:
 
 re: clean all
 
+watch:
+	fswatch --config fsw.gui.yml
+
 assets:
-	go-bindata -fs -pkg ${ASSET_PKG} -prefix cmd/gui/web-app -o ${ASSET_FILE}  cmd/gui/web-app/...
+	which go-bindata
+	go-bindata -pkg ${ASSET_PKG} -prefix cmd/gui/web-app -o ${ASSET_FILE}  cmd/gui/web-app/...
+
+# assets:
+# 	go-bindata-assetfs -debug -pkg ${ASSET_PKG} -prefix cmd/gui/web-app -o ${ASSET_FILE}  cmd/gui/web-app/...
 
 install: ${TARGET}
 	[ -e "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR}
@@ -45,4 +52,4 @@ devinst: ${TARGET}
 	@cd ${DIST_DIR}; 7z x $$OLDPWD/test-wksp.7z >/dev/null || (echo failed to extract base workspace; exit 1)
 	@echo "export PATH=${DIST_DIR}:$$PATH"
 
-.PHONY: installdeps clean install devinst uninstall re all assets phony
+.PHONY: installdeps clean install devinst uninstall re all assets watch

@@ -4,17 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"strings"
 
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/release"
 	"github.com/welschmorgan/go-release-manager/version"
-	"gopkg.in/yaml.v2"
 )
 
 type APIServer struct {
@@ -111,65 +109,14 @@ func (s *APIServer) getWorkspace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *APIServer) getUndos(w http.ResponseWriter, r *http.Request) {
-	var releaseUndoActions = []release.UndoAction{}
-	dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
-	fmt.Println("Scanning ", dir)
-	undoActions := map[string][]release.UndoAction{}
-	undoFiles := []Undo{}
-	readFile := func(name, path string, fi os.FileInfo) error {
-		if content, err := os.ReadFile(path); err != nil {
-			return fmt.Errorf("failed to load undo %s, %s", path, err.Error())
-		} else {
-			if err = yaml.Unmarshal(content, &releaseUndoActions); err != nil {
-				return fmt.Errorf("failed to load undo %s, %s", path, err.Error())
-			}
-			fmt.Println("Adding ", name)
-			undoActions[name] = releaseUndoActions
-			undoFiles = append(undoFiles, Undo{
-				Name: name,
-				Date: fi.ModTime().String(),
-			})
-		}
-		return nil
-	}
-	var readDir func(dir string) (err error)
-
-	readDir = func(dir string) (err error) {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return fmt.Errorf("failed to read directory: " + err.Error())
-		}
-		path := ""
-		var fi os.FileInfo
-		for _, e := range entries {
-			fmt.Println("Reading ", e.Name())
-			path = filepath.Join(dir, e.Name())
-			err = nil
-			if fi, err = e.Info(); err != nil {
-				log.Errorf("failed to retrieve file infos for %s, %s", path, err.Error())
-			} else if fi.IsDir() {
-				err = readDir(path)
-			} else {
-				err = readFile(e.Name(), path, fi)
-			}
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	if err := readDir(dir); err != nil {
+	undos, err := release.ListUndos()
+	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
+		fmt.Fprintf(w, "failed to list undo actions: %s", err.Error())
 		return
 	}
 
-	sort.Slice(undoFiles, func(i, j int) bool {
-		return undoFiles[i].Date < undoFiles[j].Date
-	})
-
-	if json, err := json.MarshalIndent(undoFiles, "", "  "); err != nil {
+	if json, err := json.MarshalIndent(undos, "", "  "); err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("failed to marshal undos: " + err.Error()))
 	} else {
@@ -192,16 +139,37 @@ func (s *APIServer) Serve() {
 }
 
 func (s *APIServer) provideAssets() error {
-	s.mux.Handle("/", http.FileServer(AssetFile()))
+	for _, asset := range AssetNames() {
+		s.provideAsset(asset)
+	}
+	// AssetFile()
+	// s.mux.Handle("/", http.FileServer(assetFs()))
 	return nil
 }
 
-func (s *APIServer) provideAsset(name, contentType string) {
-	http.HandleFunc("/"+name, func(w http.ResponseWriter, r *http.Request) {
+var contentTypes = map[string]string{
+	".css":  "text/css;charset=UTF-8",
+	".js":   "text/javascript;charset=UTF-8",
+	".html": "text/html;charset=UTF-8",
+}
+
+func (s *APIServer) provideAsset(asset string) {
+	s.mux.HandleFunc("/"+asset, func(w http.ResponseWriter, r *http.Request) {
+		defer s.recover(w, r)()
 		// Getting the headers so we can set the correct mime type
-		println("provide asset: " + name)
-		headers := w.Header()
-		headers["Content-Type"] = []string{contentType}
-		fmt.Fprint(w, string(MustAsset(name)))
+		uri := r.URL.String()
+		name := strings.TrimPrefix(uri, "/")
+		ctype := contentTypes[filepath.Ext(name)]
+		println("provide asset: " + name + ", content-type: " + ctype + " -> " + uri)
+		if content, err := Asset(name); err != nil {
+			w.WriteHeader(404)
+			fmt.Fprintf(w, "Asset not found: %s", name)
+		} else {
+			w.Header().Set("Content-Type", ctype)
+			w.Header().Set("Cache-Control", "no-cache")
+			w.WriteHeader(200)
+			w.Write(content)
+			log.Infof("Provided content for %s:\n-------------------------------\n%s", name, string(content))
+		}
 	})
 }

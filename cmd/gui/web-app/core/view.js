@@ -6,7 +6,7 @@ class View {
   }
 
   inject(component) {
-    this.innerHTML = component.html;
+    this.container.innerHTML = component.html;
     this.component = component;
     this.link();
     if (component && component.instance && "init" in component.instance) {
