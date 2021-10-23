@@ -1,4 +1,4 @@
-package version
+package cmd
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 
 var projects []*config.Project
 
-var Command = &cobra.Command{
+var VersionCmd = &cobra.Command{
 	Use:   "version [project_name...]",
 	Short: "Show project versions",
 	Long:  ``,

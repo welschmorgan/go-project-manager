@@ -1,6 +1,9 @@
 workspaces_root: ${home}/development
 log_folder: "${workspace}/.grlm/logs"
-branche_names: 
+branch_names: 
   production: master
   development: develop
   release: release/${version}
+api:
+  listen_addr: "localhost:8080"
+  compress_responses: true

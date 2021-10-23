@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/fs"
@@ -20,7 +21,7 @@ import (
 var errAbortRelease = errors.New("release aborted")
 
 func ListUndos() (map[string][]UndoAction, error) {
-	dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
+	dir := config.Get().Workspace.Path.Join(".grlm", "releases").Expand()
 	undoActions := map[string][]UndoAction{}
 	var readDir func(dir string) (err error)
 
@@ -69,30 +70,31 @@ func ListUndos() (map[string][]UndoAction, error) {
 }
 
 type Release struct {
-	Project     *config.Project
-	Vc          vcs.VersionControlSoftware
-	Context     Context
-	UndoActions []*UndoAction
+	Project     *config.Project            `yaml:"project,omitempty" json:"project,omitempty"`
+	Vc          vcs.VersionControlSoftware `yaml:"-" json:"-"`
+	Context     Context                    `yaml:"context,omitempty" json:"context,omitempty"`
+	UndoActions []*UndoAction              `yaml:"undo_actions,omitempty" json:"undoActions,omitempty"`
 }
 
 func NewRelease(p *config.Project) (r *Release, err error) {
 	r = &Release{
 		Project: p,
 		Context: Context{
-			startingBranch: "",
-			releaseBranch:  config.Get().BranchNames["release"],
-			devBranch:      config.Get().BranchNames["development"],
-			prodBranch:     config.Get().BranchNames["production"],
-			version:        nil,
-			nextVersion:    nil,
-			hasRemotes:     false,
-			state:          0,
-			accessor:       nil,
+			Date:           time.Now().UTC(),
+			StartingBranch: "",
+			ReleaseBranch:  config.Get().BranchNames["release"],
+			DevBranch:      config.Get().BranchNames["development"],
+			ProdBranch:     config.Get().BranchNames["production"],
+			Version:        nil,
+			NextVersion:    nil,
+			HasRemotes:     false,
+			State:          0,
+			Accessor:       nil,
 		},
 		UndoActions: []*UndoAction{},
 	}
 
-	if r.Context.accessor, err = project.Open(r.Project.Path); err != nil {
+	if r.Context.Accessor, err = project.Open(r.Project.Path); err != nil {
 		return
 	}
 
@@ -107,6 +109,7 @@ func (r *Release) PushUndoAction(name string, path fs.Path, vc string, params ma
 	if act, err := NewUndoAction(name, path, vc, params); err != nil {
 		return err
 	} else {
+		act.Id = uint(len(r.UndoActions))
 		r.UndoActions = append(r.UndoActions, act)
 	}
 	return nil
@@ -126,7 +129,7 @@ func (r *Release) AcquireVersion() (v version.Version, err error) {
 			}
 		}
 	case "package":
-		if v, err = r.Context.accessor.ReadVersion(); err != nil {
+		if v, err = r.Context.Accessor.ReadVersion(); err != nil {
 			return
 		}
 	default:
@@ -146,9 +149,9 @@ func (r *Release) PrepareContext() (err error) {
 	if remotes, err = r.Vc.ListRemotes(nil); err != nil {
 		return err
 	} else if len(remotes) > 0 {
-		r.Context.hasRemotes = true
+		r.Context.HasRemotes = true
 	}
-	if r.Context.hasRemotes {
+	if r.Context.HasRemotes {
 		if err = r.Vc.FetchIndex(vcs.FetchIndexOptions{All: true, Tags: true, Force: true}); err != nil {
 			return err
 		}
@@ -174,21 +177,21 @@ func (r *Release) PrepareContext() (err error) {
 	}
 	fs.PutPathEnv("version", curVersion.String)
 	fs.PutPathEnv("next_version", curVersion.String)
-	r.Context.releaseBranch = fs.ExpandPath(r.Context.releaseBranch)
-	r.Context.startingBranch = curBranch
-	r.Context.version = curVersion
-	r.Context.nextVersion = nextVersion
+	r.Context.ReleaseBranch = fs.ExpandPath(r.Context.ReleaseBranch)
+	r.Context.StartingBranch = curBranch
+	r.Context.Version = curVersion
+	r.Context.NextVersion = nextVersion
 
 	tags := []string{}
 	if tags, err = r.Vc.ListTags(nil); err != nil {
 		return err
 	}
 	for _, tag := range tags {
-		if strings.ToLower(r.Context.version.String()) == strings.ToLower(tag) {
-			return fmt.Errorf("Current version '%s' already tagged", r.Context.version)
+		if strings.EqualFold(r.Context.Version.String(), strings.ToLower(tag)) {
+			return fmt.Errorf("current version '%s' already tagged", r.Context.Version)
 		}
-		if strings.ToLower(r.Context.version.String()) == strings.ToLower(tag) {
-			return fmt.Errorf("Next version '%s' already tagged", r.Context.nextVersion)
+		if strings.EqualFold(r.Context.Version.String(), strings.ToLower(tag)) {
+			return fmt.Errorf("next version '%s' already tagged", r.Context.NextVersion)
 		}
 	}
 	return nil
@@ -200,7 +203,7 @@ func (r *Release) Do() error {
 		return err
 	}
 
-	r.Context.state = ReleaseStarted
+	r.Context.State = ReleaseStarted
 
 	// stash modifications
 	if err = r.StashModifications(); err != nil {
@@ -231,38 +234,41 @@ func (r *Release) Do() error {
 		return err
 	}
 
-	if err = r.WriteUndos(); err != nil {
+	if err = r.Write(); err != nil {
 		return err
 	}
-	r.Context.state |= ReleaseFinished
+	r.Context.State |= ReleaseFinished
 	return nil
 }
 
-func (r *Release) WriteUndos() error {
-	if data, err := yaml.Marshal(r.UndoActions); err != nil {
+func (r *Release) Write() error {
+	if data, err := yaml.Marshal(r); err != nil {
 		return err
 	} else {
-		undosDir := config.Get().Workspace.Path.Join(".grlm", "undos", r.Context.version.String()).Expand()
+		undosDir := config.Get().Workspace.Path.Join(".grlm", "releases").Expand()
 		os.MkdirAll(undosDir, 0755)
-		numFiles := 0
-		if dirEntries, err := os.ReadDir(undosDir); err != nil {
-			return err
-		} else {
-			for _, de := range dirEntries {
-				if !de.IsDir() {
-					numFiles++
-				}
-			}
-		}
-		os.MkdirAll(undosDir, 0755)
-		path := filepath.Join(undosDir, fmt.Sprintf("%04d", numFiles)+"-"+r.Context.version.String()+".yaml")
+		path := filepath.Join(undosDir, r.Context.Version.String()+".yaml")
 		if err = os.WriteFile(path, data, 0755); err != nil {
 			return err
 		}
-		log.Infof("Undo actions written at: %s\n", path)
+		log.Infof("Release saved: %s\n", path)
 	}
 	return nil
 }
+
+func (r *Release) Read() error {
+	undosDir := config.Get().Workspace.Path.Join(".grlm", "releases").Expand()
+	os.MkdirAll(undosDir, 0755)
+	path := filepath.Join(undosDir, r.Context.Version.String()+".yaml")
+	if data, err := os.ReadFile(path); err != nil {
+		return err
+	} else if err = yaml.Unmarshal(data, r); err != nil {
+		return err
+	}
+	log.Infof("Release loaded: %s\n", path)
+	return nil
+}
+
 func (r *Release) Step(fmt string, a ...interface{}) {
 	log.Infof("[\033[1;34m*\033[0m] "+fmt+"\n", a...)
 	config.Get().Indent = 1
@@ -280,7 +286,7 @@ func (r *Release) Undo() error {
 		return err
 	}
 
-	log.Debugf("[\033[1;31m-\033[0m] Undoing release %s for '%s' ...\n", r.Context.version, r.Project.Name)
+	log.Debugf("[\033[1;31m-\033[0m] Undoing release %s for '%s' ...\n", r.Context.Version, r.Project.Name)
 	config.Get().Indent++
 	for i := len(r.UndoActions) - 1; i >= 0; i-- {
 		action := r.UndoActions[i]
@@ -319,10 +325,10 @@ func (r *Release) WaitUserToConfirm() error {
 func (r *Release) UpdateRepository() error {
 	var err error
 	r.Step("Update repository")
-	if err = r.CheckoutAndPullBranch(r.Context.prodBranch); err != nil {
+	if err = r.CheckoutAndPullBranch(r.Context.ProdBranch); err != nil {
 		return err
 	}
-	if err = r.CheckoutAndPullBranch(r.Context.devBranch); err != nil {
+	if err = r.CheckoutAndPullBranch(r.Context.DevBranch); err != nil {
 		return err
 	}
 	if err = r.PullTags(); err != nil {
@@ -340,7 +346,7 @@ func (r *Release) StashModifications() error {
 	if err != nil {
 		return err
 	} else if len(status) != 0 {
-		message := fmt.Sprintf("Before release %s, on branch %s", r.Context.version, r.Context.startingBranch)
+		message := fmt.Sprintf("Before release %s, on branch %s", r.Context.Version, r.Context.StartingBranch)
 		fmt.Printf("The current repository is dirty:\n%v\n\t-> stashed under '%s'\n", status, message)
 		if _, err := r.Vc.Stash(vcs.StashOptions{
 			Save:             true,
@@ -362,7 +368,7 @@ func (r *Release) CheckoutBranch(branch string) error {
 	if hash, subj, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
 		return err
 	}
-	if r.Context.oldBranch, err = r.Vc.CurrentBranch(); err != nil {
+	if r.Context.OldBranch, err = r.Vc.CurrentBranch(); err != nil {
 		return err
 	}
 	log.Debugf("Checkout %s at %s - %s", branch, hash, subj)
@@ -370,7 +376,7 @@ func (r *Release) CheckoutBranch(branch string) error {
 		return err
 	} else {
 		r.PushUndoAction("checkout", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-			"oldBranch": r.Context.oldBranch,
+			"oldBranch": r.Context.OldBranch,
 			"newBranch": branch,
 		})
 	}
@@ -406,7 +412,7 @@ func (r *Release) CheckoutAndPullBranch(branch string) error {
 	if err := r.CheckoutBranch(branch); err != nil {
 		return err
 	}
-	if r.Context.hasRemotes {
+	if r.Context.HasRemotes {
 		if err := r.PullBranch(); err != nil {
 			return err
 		}
@@ -415,7 +421,7 @@ func (r *Release) CheckoutAndPullBranch(branch string) error {
 }
 
 func (r *Release) PullTags() error {
-	if r.Context.hasRemotes {
+	if r.Context.HasRemotes {
 		if err := r.Vc.Pull(vcs.PullOptions{All: false, ListTags: true, Force: true}); err != nil {
 			return err
 		}
@@ -426,24 +432,24 @@ func (r *Release) PullTags() error {
 func (r *Release) ReleaseStart() error {
 	var err error
 	r.Step("Start release")
-	r.Context.state |= ReleaseStartStarted
-	if r.Context.oldBranch, err = r.Vc.CurrentBranch(); err != nil {
+	r.Context.State |= ReleaseStartStarted
+	if r.Context.OldBranch, err = r.Vc.CurrentBranch(); err != nil {
 		return err
-	} else if err = r.Vc.Checkout(r.Context.releaseBranch, vcs.CheckoutOptions{
-		StartingPoint: r.Context.devBranch,
+	} else if err = r.Vc.Checkout(r.Context.ReleaseBranch, vcs.CheckoutOptions{
+		StartingPoint: r.Context.DevBranch,
 		CreateBranch:  true,
 	}); err != nil {
 		return err
 	}
 	r.PushUndoAction("create_branch", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"oldBranch": r.Context.oldBranch,
-		"newBranch": r.Context.releaseBranch,
+		"oldBranch": r.Context.OldBranch,
+		"newBranch": r.Context.ReleaseBranch,
 	})
 	r.PushUndoAction("checkout", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"oldBranch": r.Context.oldBranch,
-		"newBranch": r.Context.releaseBranch,
+		"oldBranch": r.Context.OldBranch,
+		"newBranch": r.Context.ReleaseBranch,
 	})
-	r.Context.state |= ReleaseStartFinished
+	r.Context.State |= ReleaseStartFinished
 	return nil
 }
 
@@ -471,51 +477,51 @@ func (r *Release) Merge(source, dest string, options vcs.MergeOptions) error {
 func (r *Release) ReleaseFinish() error {
 	// merge release branch into prod branch
 	r.Step("Finish release")
-	r.Context.state |= ReleaseFinishStarted
+	r.Context.State |= ReleaseFinishStarted
 
-	r.SubStep("Merge " + r.Context.releaseBranch + " into " + r.Context.prodBranch)
-	if err := r.Merge(r.Context.releaseBranch, r.Context.prodBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
+	r.SubStep("Merge " + r.Context.ReleaseBranch + " into " + r.Context.ProdBranch)
+	if err := r.Merge(r.Context.ReleaseBranch, r.Context.ProdBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
 	}
 
 	// tag prod branch
-	r.SubStep("Tag " + r.Context.version.String())
-	if err := r.Vc.Tag(r.Context.version.String(), vcs.TagOptions{Annotated: true, Message: fmt.Sprintf("Release %s: %s", r.Context.version, "TODO")}); err != nil {
+	r.SubStep("Tag " + r.Context.Version.String())
+	if err := r.Vc.Tag(r.Context.Version.String(), vcs.TagOptions{Annotated: true, Message: fmt.Sprintf("Release %s: %s", r.Context.Version, "TODO")}); err != nil {
 		return err
 	}
 
 	r.PushUndoAction("create_tag", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"name": r.Context.version.String(),
+		"name": r.Context.Version.String(),
 	})
 
-	r.SubStep("Merge tag " + r.Context.version.String() + " into " + r.Context.devBranch)
+	r.SubStep("Merge tag " + r.Context.Version.String() + " into " + r.Context.DevBranch)
 	// retro merge tag into dev branch
-	if err := r.Merge(r.Context.version.String(), r.Context.devBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
+	if err := r.Merge(r.Context.Version.String(), r.Context.DevBranch, vcs.MergeOptions{NoFastForward: true}); err != nil {
 		return err
 	}
 
 	// delete release branch
-	r.SubStep("Delete release branch " + r.Context.releaseBranch)
-	if err := r.Vc.DeleteBranch(r.Context.releaseBranch, nil); err != nil {
+	r.SubStep("Delete release branch " + r.Context.ReleaseBranch)
+	if err := r.Vc.DeleteBranch(r.Context.ReleaseBranch, nil); err != nil {
 		return err
 	}
-	r.Context.state |= ReleaseFinishFinished
+	r.Context.State |= ReleaseFinishFinished
 	return nil
 }
 
 func (r *Release) PrepareForNextSprint() (err error) {
-	r.Step("Prepare for next sprint: %s", r.Context.nextVersion.String())
-	r.SubStep("Checkout %s", r.Context.devBranch)
-	if err = r.CheckoutBranch(r.Context.devBranch); err != nil {
+	r.Step("Prepare for next sprint: %s", r.Context.NextVersion.String())
+	r.SubStep("Checkout %s", r.Context.DevBranch)
+	if err = r.CheckoutBranch(r.Context.DevBranch); err != nil {
 		return
 	}
-	r.SubStep("Bump version: %s -> %s", r.Context.version, r.Context.nextVersion)
-	if err = r.Context.accessor.WriteVersion(&r.Context.nextVersion); err != nil {
+	r.SubStep("Bump version: %s -> %s", r.Context.Version, r.Context.NextVersion)
+	if err = r.Context.Accessor.WriteVersion(&r.Context.NextVersion); err != nil {
 		return
 	}
 	r.PushUndoAction("bump_version", r.Project.Path, r.Vc.Name(), map[string]interface{}{
-		"oldVersion": r.Context.version,
-		"newVersion": r.Context.nextVersion,
+		"oldVersion": r.Context.Version,
+		"newVersion": r.Context.NextVersion,
 	})
 	r.SubStep("Stage & Commit")
 	if err = r.Vc.Stage(vcs.StageOptions{All: true}); err != nil {
@@ -530,7 +536,7 @@ func (r *Release) PrepareForNextSprint() (err error) {
 	if prevHead, _, err = r.Vc.CurrentCommit(vcs.CurrentCommitOptions{ShortHash: true}); err != nil {
 		return
 	}
-	subject := "Prepare for next sprint: " + r.Context.nextVersion.String()
+	subject := "Prepare for next sprint: " + r.Context.NextVersion.String()
 	if err = r.Vc.Commit(vcs.CommitOptions{Message: subject, AllowEmpty: true}); err != nil {
 		return
 	}

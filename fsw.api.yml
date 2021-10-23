@@ -11,7 +11,7 @@ triggers:
     DEBUG: "1"
   # if shell is true, $cmd will be wrapped with `bash -c`
   shell: true
-  cmd: make re && ./dist/grlm -C dist/test-wksp gui -v max
+  cmd: make re && ./dist/grlm -C dist/test-wksp api -v max
   delay: 100ms
   stop_timeout: 1s
   signal: "KILL"

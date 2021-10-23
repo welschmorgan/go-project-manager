@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/welschmorgan/go-release-manager/cmd/gui/api"
+	"github.com/welschmorgan/go-release-manager/api"
+	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/log"
 )
 
@@ -15,7 +16,7 @@ var Command = &cobra.Command{
 	Short: "Interface to show workspace",
 	Long:  ``,
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
-		const listenAddr = "localhost:8080"
+		listenAddr := config.Get().API.ListenAddr
 		v := NewWebAppView(WebAppViewConfig{
 			width:    1024,
 			height:   768,
@@ -35,9 +36,7 @@ var Command = &cobra.Command{
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				log.Infof("Starting api server on '%s'", s.Addr)
 				s.Serve()
-				log.Infof("Stopped api server")
 				apiStopped <- true
 			}()
 
@@ -45,9 +44,7 @@ var Command = &cobra.Command{
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				log.Infof("Starting web-app view on '%s'", s.Addr)
 				v.Start()
-				log.Infof("Stopped web-app view")
 				viewClosed <- true
 			}()
 

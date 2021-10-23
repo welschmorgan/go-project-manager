@@ -2,6 +2,7 @@ package release
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
@@ -9,6 +10,8 @@ import (
 )
 
 type UndoAction struct {
+	Id            uint                       `yaml:"id" json:"id"`
+	Date          time.Time                  `yaml:"date,omitempty" json:"date,omitempty"`
 	Name          string                     `yaml:"name,omitempty" json:"name,omitempty"`
 	Title         string                     `yaml:"title,omitempty" json:"title,omitempty"`
 	Path          fs.Path                    `yaml:"path,omitempty" json:"path,omitempty"`
@@ -66,6 +69,8 @@ var undoActionParamHandlers = map[string]func(*UndoAction) error{
 
 func NewUndoAction(name string, path fs.Path, vc string, params map[string]interface{}) (*UndoAction, error) {
 	act := &UndoAction{
+		Id:            0,
+		Date:          time.Now().UTC(),
 		Name:          name,
 		Title:         "",
 		Path:          path,

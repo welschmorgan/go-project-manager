@@ -13,7 +13,7 @@ class App {
         { route: "home", label: "Home" },
         { route: "projects", label: "Manage Projects" },
         { route: "versions", label: "Manage Versions" },
-        { route: "undos", label: "Manage Undos" },
+        { route: "releases", label: "Manage Releases" },
       ];
       this.createMenu();
       this.navigate("home");
@@ -66,13 +66,11 @@ class App {
 
   onViewFetched = (component, response, counter) => {
     component.html = response || "";
-    console.info('[main.js] fetched html', component.name, response);
     counter();
   };
 
   onScriptFetched = (component, response, counter) => {
     const prevScr = document.querySelector(`app-${component.name}`);
-    console.info('[main.js] fetched js', component.name, response);
     if (!prevScr) {
       const scr = document.createElement("script");
       scr.type = "text/javascript";

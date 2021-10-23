@@ -1,4 +1,4 @@
-package undo
+package cmd
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"github.com/welschmorgan/go-release-manager/vcs"
 )
 
-var Command = &cobra.Command{
+var UndoCmd = &cobra.Command{
 	Use:   "undo [OPTIONS...]",
 	Short: "List / Undo release",
 	Long:  ``,

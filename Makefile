@@ -5,7 +5,7 @@ INSTALL_DIR?=/usr/local
 LD_FLAGS="-H windowsgui"
 
 TARGET=${DIST_DIR}/${NAME}
-ASSET_FILE="cmd/gui/api/assets.go"
+ASSET_FILE="api/assets.go"
 ASSET_PKG="api"
 
 all: ${TARGET}
@@ -28,11 +28,13 @@ clean:
 
 re: clean all
 
-watch:
+watch-gui:
 	fswatch --config fsw.gui.yml
 
+watch-api:
+	fswatch --config fsw.api.yml
+
 assets:
-	which go-bindata
 	go-bindata -pkg ${ASSET_PKG} -prefix cmd/gui/web-app -o ${ASSET_FILE}  cmd/gui/web-app/...
 
 # assets:
@@ -52,4 +54,4 @@ devinst: ${TARGET}
 	@cd ${DIST_DIR}; 7z x $$OLDPWD/test-wksp.7z >/dev/null || (echo failed to extract base workspace; exit 1)
 	@echo "export PATH=${DIST_DIR}:$$PATH"
 
-.PHONY: installdeps clean install devinst uninstall re all assets watch
+.PHONY: installdeps clean install devinst uninstall re all assets watch-gui watch-api

@@ -34,14 +34,15 @@ var loggers = map[string]*log.Logger{}
 func PrettifyCaller(callerFrameOffset int) func(f *runtime.Frame) (function, file string) {
 	return func(f *runtime.Frame) (function, file string) {
 		function, file = fileInfo(CALLER_FRAME + callerFrameOffset)
-		function = fmt.Sprintf(fmt.Sprintf("%%-%ds", CALLER_FUNC_PAD_SIZE+3+2), function)
-		if len(function) > CALLER_FUNC_PAD_SIZE {
-			removeCount := len(function) - (CALLER_FUNC_PAD_SIZE + 3 + 2)
-			halfPos := len(function) / 2
-			function = fmt.Sprintf("%s...%s", string(function[0:halfPos-removeCount/2]), string(function[halfPos+removeCount/2:]))
-		}
+		// function = fmt.Sprintf(fmt.Sprintf("%%-%ds", CALLER_FUNC_PAD_SIZE+3+2), function)
+		// if len(function) > CALLER_FUNC_PAD_SIZE {
+		// 	removeCount := len(function) - (CALLER_FUNC_PAD_SIZE + 3 + 2)
+		// 	halfPos := len(function) / 2
+		// 	function = fmt.Sprintf("%s...%s", string(function[0:halfPos-removeCount/2]), string(function[halfPos+removeCount/2:]))
+		// }
 		// function = fmt.Sprintf(fmt.Sprintf("%%%d.%ds", CALLER_FUNC_PAD_SIZE, CALLER_FUNC_PAD_SIZE), function)
 		file = fmt.Sprintf(fmt.Sprintf("%%%-d.%ds", CALLER_FILE_PAD_SIZE, CALLER_FILE_PAD_SIZE), file)
+		function = ""
 		return
 	}
 }

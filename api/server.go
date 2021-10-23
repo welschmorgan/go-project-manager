@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 
+	"github.com/welschmorgan/go-release-manager/api/controllers"
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
@@ -125,17 +127,32 @@ func (s *APIServer) getUndos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *APIServer) Controller(prefix string, e http.Handler) *APIServer {
+	prefix = strings.TrimSuffix(prefix, "/")
+	s.mux.Handle(prefix+"/", http.StripPrefix(prefix, e))
+	return s
+}
+
 func (s *APIServer) Serve() {
 	s.mux.HandleFunc("/home", s.getHome)
 	s.mux.HandleFunc("/api/projects", s.getProjects)
 	s.mux.HandleFunc("/api/projects/scan", s.getProjects)
 	s.mux.HandleFunc("/api/versions", s.getVersions)
-	s.mux.HandleFunc("/api/undos", s.getUndos)
 	s.mux.HandleFunc("/api/workspace", s.getWorkspace)
+	s.Controller("/api/release", controllers.NewReleaseEndpoint())
+	// s.mux.Handle("/api/release", http.StripPrefix("/api/release", controllers.NewReleaseEndpoint()))
+
+	rv := reflect.ValueOf(s.mux).Elem()
+	routes := rv.FieldByName("m")
+	for _, k := range routes.MapKeys() {
+		log.Info(k.String())
+	}
 
 	s.provideAssets()
 
+	log.Infof("Starting api server on '%s'", s.Addr)
 	log.Fatal(s.ListenAndServe())
+	log.Infof("Stopped api server")
 }
 
 func (s *APIServer) provideAssets() error {
@@ -160,7 +177,6 @@ func (s *APIServer) provideAsset(asset string) {
 		uri := r.URL.String()
 		name := strings.TrimPrefix(uri, "/")
 		ctype := contentTypes[filepath.Ext(name)]
-		println("provide asset: " + name + ", content-type: " + ctype + " -> " + uri)
 		if content, err := Asset(name); err != nil {
 			w.WriteHeader(404)
 			fmt.Fprintf(w, "Asset not found: %s", name)
@@ -169,7 +185,6 @@ func (s *APIServer) provideAsset(asset string) {
 			w.Header().Set("Cache-Control", "no-cache")
 			w.WriteHeader(200)
 			w.Write(content)
-			log.Infof("Provided content for %s:\n-------------------------------\n%s", name, string(content))
 		}
 	})
 }

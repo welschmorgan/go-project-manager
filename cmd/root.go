@@ -1,4 +1,4 @@
-package root
+package cmd
 
 import (
 	"fmt"
@@ -9,11 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/thediveo/enumflag"
-	guiCommand "github.com/welschmorgan/go-release-manager/cmd/gui"
+	"github.com/welschmorgan/go-release-manager/cmd/gui"
 	initCommand "github.com/welschmorgan/go-release-manager/cmd/init"
-	releaseCommand "github.com/welschmorgan/go-release-manager/cmd/release"
-	undoCommand "github.com/welschmorgan/go-release-manager/cmd/undo"
-	versionCommand "github.com/welschmorgan/go-release-manager/cmd/version"
 	"github.com/welschmorgan/go-release-manager/config"
 	"github.com/welschmorgan/go-release-manager/fs"
 	"github.com/welschmorgan/go-release-manager/log"
@@ -22,16 +19,15 @@ import (
 var workspacesRoot string
 var logFolder string
 
-var Command = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:          "grlm [commands]",
 	Short:        "Release multiple projects in a single go",
 	Long:         `GRLM allows releasing multiple projects declared in a workspace`,
 	SilenceUsage: true,
 }
 
-// Execute executes the root command.
 func Execute() error {
-	return Command.Execute()
+	return RootCmd.Execute()
 }
 
 func init() {
@@ -43,8 +39,8 @@ func init() {
 		config.Get().WorkingDirectory = cwd
 	}
 	// config file
-	Command.PersistentFlags().StringVarP(&config.Get().CfgFile, "config", "c", config.Get().CfgFile, "config file (default is $HOME/.grlm.yaml)")
-	viper.BindPFlag("config", Command.PersistentFlags().Lookup("config"))
+	RootCmd.PersistentFlags().StringVarP(&config.Get().CfgFile, "config", "c", config.Get().CfgFile, "config file (default is $HOME/.grlm.yaml)")
+	viper.BindPFlag("config", RootCmd.PersistentFlags().Lookup("config"))
 
 	// verbose
 
@@ -52,38 +48,39 @@ func init() {
 	for _, v := range config.VerboseLevels {
 		VerboseLevels[v] = v.TextualRepresentations()
 	}
-	Command.PersistentFlags().VarP(
+	RootCmd.PersistentFlags().VarP(
 		enumflag.New(&config.Get().Verbose, "verbose", VerboseLevels, enumflag.EnumCaseInsensitive),
 		"verbose",
 		"v",
 		"show additionnal log messages; can be 'none', 'low', 'normal', 'high', 'max'")
-	viper.BindPFlag("verbose", Command.PersistentFlags().Lookup("verbose"))
+	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
 
 	// dry run
-	Command.PersistentFlags().BoolVarP(&config.Get().DryRun, "dry_run", "n", config.Get().DryRun, "simulate commande execution, do not execute them")
-	viper.BindPFlag("dry_run", Command.PersistentFlags().Lookup("dry_run"))
+	RootCmd.PersistentFlags().BoolVarP(&config.Get().DryRun, "dry_run", "n", config.Get().DryRun, "simulate commande execution, do not execute them")
+	viper.BindPFlag("dry_run", RootCmd.PersistentFlags().Lookup("dry_run"))
 
 	// change working dir
-	Command.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working_directory", "C", config.Get().WorkingDirectory, "change working directory")
-	viper.BindPFlag("working_directory", Command.PersistentFlags().Lookup("working_directory"))
+	RootCmd.PersistentFlags().StringVarP(&config.Get().WorkingDirectory, "working_directory", "C", config.Get().WorkingDirectory, "change working directory")
+	viper.BindPFlag("working_directory", RootCmd.PersistentFlags().Lookup("working_directory"))
 
 	workspacesRoot = config.Get().WorkspacesRoot.Expand()
 	logFolder = config.Get().LogFolder.Expand()
 
 	// define workspaces root
-	Command.PersistentFlags().StringVar(&workspacesRoot, "workspaces_root", workspacesRoot, "The root folder where to find workspaces")
-	viper.BindPFlag("workspaces_root", Command.PersistentFlags().Lookup("workspaces_root"))
+	RootCmd.PersistentFlags().StringVar(&workspacesRoot, "workspaces_root", workspacesRoot, "The root folder where to find workspaces")
+	viper.BindPFlag("workspaces_root", RootCmd.PersistentFlags().Lookup("workspaces_root"))
 
 	// define log output dir
-	Command.PersistentFlags().StringVar(&logFolder, "log_folder", logFolder, "change where to write logs")
-	viper.BindPFlag("log_folder", Command.PersistentFlags().Lookup("log_folder"))
+	RootCmd.PersistentFlags().StringVar(&logFolder, "log_folder", logFolder, "change where to write logs")
+	viper.BindPFlag("log_folder", RootCmd.PersistentFlags().Lookup("log_folder"))
 
-	// Command.ActionAddCommand(addCmd)
-	Command.AddCommand(initCommand.Command)
-	Command.AddCommand(releaseCommand.Command)
-	Command.AddCommand(versionCommand.Command)
-	Command.AddCommand(guiCommand.Command)
-	Command.AddCommand(undoCommand.Command)
+	// RootCmd.ActionAddCommand(addCmd)
+	RootCmd.AddCommand(initCommand.Command)
+	RootCmd.AddCommand(ReleaseCmd)
+	RootCmd.AddCommand(gui.Command)
+	RootCmd.AddCommand(APICmd)
+	RootCmd.AddCommand(UndoCmd)
+	RootCmd.AddCommand(VersionCmd)
 }
 
 func updateWorkspacePaths() (err error) {

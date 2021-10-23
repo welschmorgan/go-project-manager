@@ -9,6 +9,10 @@ import (
 	"github.com/welschmorgan/go-release-manager/version"
 )
 
+type APIConfig struct {
+	ListenAddr        string `json:"listenAddr" yaml:"listen_addr"`
+	CompressResponses bool   `json:"compressResponses" yaml:"compress_responsees"`
+}
 type Config struct {
 	Workspace
 	Indent            int
@@ -18,6 +22,7 @@ type Config struct {
 	WorkingDirectory  string
 	WorkspaceFilename string
 	WorkspacePath     fs.Path
+	API               APIConfig
 	DryRun            bool
 	Interactive       bool
 	LogFolder         fs.Path
@@ -29,11 +34,15 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	} else {
 		return &Config{
-			Workspace:         *NewWorkspace(),
-			WorkspacesRoot:    fs.Path(DefaultWorkspacesRoot),
-			Verbose:           DefaultVerbose,
-			Indent:            0,
-			CfgFile:           "",
+			Workspace:      *NewWorkspace(),
+			WorkspacesRoot: fs.Path(DefaultWorkspacesRoot),
+			Verbose:        DefaultVerbose,
+			Indent:         0,
+			CfgFile:        "",
+			API: APIConfig{
+				ListenAddr:        "localhost:8080",
+				CompressResponses: false,
+			},
 			WorkingDirectory:  cwd,
 			WorkspaceFilename: DefaultWorkspaceFilename,
 			WorkspacePath:     fs.Path(filepath.Join(cwd, DefaultWorkspaceFilename)),
