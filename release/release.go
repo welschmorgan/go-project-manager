@@ -19,6 +19,55 @@ import (
 
 var errAbortRelease = errors.New("release aborted")
 
+func ListUndos() (map[string][]UndoAction, error) {
+	dir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
+	undoActions := map[string][]UndoAction{}
+	var readDir func(dir string) (err error)
+
+	readFile := func(name, path string, fi os.FileInfo) error {
+		if content, err := os.ReadFile(path); err != nil {
+			return fmt.Errorf("failed to load undo %s, %s", path, err.Error())
+		} else {
+			var releaseUndoActions = []UndoAction{}
+			if err = yaml.Unmarshal(content, &releaseUndoActions); err != nil {
+				return fmt.Errorf("failed to load undo %s, %s", path, err.Error())
+			}
+			undoActions[name] = releaseUndoActions
+		}
+		return nil
+	}
+
+	readDir = func(dir string) (err error) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return fmt.Errorf("failed to read directory: " + err.Error())
+		}
+		path := ""
+		var fi os.FileInfo
+		for _, e := range entries {
+			path = filepath.Join(dir, e.Name())
+			err = nil
+			if fi, err = e.Info(); err != nil {
+				log.Errorf("failed to retrieve file infos for %s, %s", path, err.Error())
+			} else if fi.IsDir() {
+				err = readDir(path)
+			} else {
+				err = readFile(e.Name(), path, fi)
+			}
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := readDir(dir); err != nil {
+		return nil, err
+	}
+
+	return undoActions, nil
+}
+
 type Release struct {
 	Project     *config.Project
 	Vc          vcs.VersionControlSoftware
@@ -193,7 +242,7 @@ func (r *Release) WriteUndos() error {
 	if data, err := yaml.Marshal(r.UndoActions); err != nil {
 		return err
 	} else {
-		undosDir := config.Get().Workspace.Path.Join(".grlm", "undos").Expand()
+		undosDir := config.Get().Workspace.Path.Join(".grlm", "undos", r.Context.version.String()).Expand()
 		os.MkdirAll(undosDir, 0755)
 		numFiles := 0
 		if dirEntries, err := os.ReadDir(undosDir); err != nil {

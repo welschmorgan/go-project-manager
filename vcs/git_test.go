@@ -54,8 +54,8 @@ func TestGitShouldInitializeEmptyFolder(t *testing.T) {
 	// check path has been assigned
 	assert.Equal(t, dir, git.path)
 	// check repository ok
-	dotGitDir := filepath.Join(git.path, ".git")
-	if fi, err := os.Stat(dotGitDir); err != nil {
+	dotGitDir := git.path.Join(".git")
+	if fi, err := dotGitDir.Stat(); err != nil {
 		t.Fatal(err)
 	} else {
 		assert.Equal(t, true, fi.IsDir())
@@ -70,7 +70,7 @@ func TestGitShouldDetectValidFolder(t *testing.T) {
 	}
 	// init git repo
 	g := &Git{}
-	if err = g.Detect(dir); err != nil {
+	if err = g.Detect(fs.Path(dir)); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, dir, g.path)
@@ -83,7 +83,7 @@ func TestGitShouldOpenValidFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	// init git repo
-	if err = g.Open(dir); err != nil {
+	if err = g.Open(fs.Path(dir)); err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, dir, g.path)
@@ -96,7 +96,7 @@ func TestGitCommand_CommitAndExtractLogShouldWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	// init git repo
-	if err = git.Open(dir); err != nil {
+	if err = git.Open(fs.Path(dir)); err != nil {
 		t.Fatal(err)
 	}
 	var log []string
@@ -118,7 +118,7 @@ func TestGitCommand_CheckoutThenGetCurrentBranchWorks(t *testing.T) {
 		t.Fatal(err)
 	}
 	// init git repo
-	if err = git.Open(dir); err != nil {
+	if err = git.Open(fs.Path(dir)); err != nil {
 		t.Fatal(err)
 	}
 	// create root commit
@@ -154,7 +154,7 @@ func TestGitCommand_CreatingAndListingTagsShouldWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	// init git repo
-	if err = git.Open(dir); err != nil {
+	if err = git.Open(fs.Path(dir)); err != nil {
 		t.Fatal(err)
 	}
 	// create root commit
@@ -180,7 +180,7 @@ func TestGitCommand_CreatingAndListingStashesShouldWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	// init git repo
-	if err = git.Open(dir); err != nil {
+	if err = git.Open(fs.Path(dir)); err != nil {
 		t.Fatal(err)
 	}
 	// create root commit

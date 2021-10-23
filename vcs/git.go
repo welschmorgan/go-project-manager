@@ -68,7 +68,7 @@ func (g *Git) ListBranches(options VersionControlOptions) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, _ := range out {
+	for i := range out {
 		if strings.HasPrefix(out[i], "*") {
 			out[i] = strings.TrimSpace(strings.Replace(out[i], "*", "", 1))
 		}

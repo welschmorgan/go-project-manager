@@ -2,14 +2,18 @@
 
 Manage several git repositories for seamless releasing / synchronizing
 
+## System dependencies
+
 ## How to install dependencies
 
 ```shell
-go get ./...
+make installdeps
 ```
 
 ## How to build
 
 ```shell
-go build -a -o pjm
+make re
 ```
+
+Binaries will get generated in dist/

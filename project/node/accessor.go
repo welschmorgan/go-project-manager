@@ -1,12 +1,14 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	io_fs "io/fs"
 	"os"
 	"strings"
 
 	"github.com/welschmorgan/go-release-manager/fs"
+	"github.com/welschmorgan/go-release-manager/log"
 	"github.com/welschmorgan/go-release-manager/project/accessor"
 	"github.com/welschmorgan/go-release-manager/version"
 )
@@ -89,6 +91,45 @@ func (a *ProjectAccessor) WriteVersion(v *version.Version) (err error) {
 		}
 	}
 	return
+}
+
+// Retrieve the possible list of files that need version updates
+func (a *ProjectAccessor) VersionManipulators() map[string]accessor.VersionFileManipulator {
+	return map[string]accessor.VersionFileManipulator{
+		a.DescriptionFile(): {
+			Detect: a.detectPackageVersion,
+			Update: a.updatePackageVersion,
+		},
+	}
+}
+
+func (a *ProjectAccessor) detectPackageVersion(file, content string, currentVersion *version.Version) bool {
+	data := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(content), &data); err != nil {
+		log.Errorf("Failed to parse %s content: %s", file, err.Error())
+		return false
+	}
+	if _, ok := data["version"]; !ok {
+		log.Errorf("No version key found in %s", file)
+		return false
+	}
+	return true
+}
+
+func (a *ProjectAccessor) updatePackageVersion(file, content string, currentVersion, nextVersion *version.Version) (string, error) {
+	data := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(content), &data); err != nil {
+		return "", fmt.Errorf("failed to parse %s content: %s", file, err.Error())
+	}
+	if _, ok := data["version"]; !ok {
+		return "", fmt.Errorf("no version key found in %s", file)
+	}
+	data["version"] = nextVersion.String()
+	if output, err := json.MarshalIndent(data, "", "  "); err != nil {
+		return "", err
+	} else {
+		return string(output), nil
+	}
 }
 
 func (a *ProjectAccessor) Version() (string, error) {

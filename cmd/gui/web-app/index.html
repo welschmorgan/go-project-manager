@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="/styles/dark-theme.css" />
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/styles/forms.css" />
+  </head>
+  <body>
+    <ul id="main-menu" class='button-bar'>
+    </ul>
+    
+    <div id="view"></div>
+    
+    <div id="status-bar"></div>
+
+    <script type="text/javascript" src="/core/view.js"></script>
+    <script type="text/javascript" src="/core/component.js"></script>
+    <script type="text/javascript" src="/core/loader.js"></script>
+    <script type="text/javascript" src="/app/main.js"></script>
+    <script type="text/javascript">
+      app = new App({
+        mainMenuSelector: '#main-menu',
+        viewContainerSelector: '#view'
+      });
+    </script>
+  </body>
+</html>
