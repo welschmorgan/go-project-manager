@@ -19,7 +19,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/main.go",
-      "args": ["release", "preRelease", "-C", "dist/test-wksp", "-v", "max"]
+      "args": ["release", "minor", "-C", "dist/test-wksp", "-v", "max"]
     },
     {
       "name": "Launch Package (version)",

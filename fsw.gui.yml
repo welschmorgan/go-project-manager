@@ -17,5 +17,14 @@ triggers:
   signal: "KILL"
   kill_signal: "SIGTERM"
 watch_paths:
-  - .
+  - cmd
+  - config
+  - exec
+  - fs
+  - log
+  - project
+  - release
+  - ui
+  - vcs
+  - version
 watch_depth: 5
